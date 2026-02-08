@@ -8,7 +8,7 @@ import { TypingIndicator } from '@/components/TypingIndicator';
 import { PaywallBanner } from '@/components/PaywallBanner';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Crown } from 'lucide-react';
-import mistressAvatar from '@/assets/mistress-elara.jpg';
+const MISTRESS_AVATAR = 'https://i.ibb.co/cKLtsYJ6/hotmartdomina.jpg';
 
 export function ChatPage() {
   const { user, signInAnonymously } = useAuth();
@@ -41,7 +41,7 @@ export function ChatPage() {
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-card/80 backdrop-blur">
         <div className="flex items-center gap-3">
-          <img src={mistressAvatar} alt="Mistress Elara" className="w-10 h-10 rounded-full object-cover border border-primary/40" />
+          <img src={MISTRESS_AVATAR} alt="Mistress Elara" className="w-10 h-10 rounded-full object-cover border border-primary/40" />
           <div>
             <h2 className="text-sm font-semibold text-foreground">Mistress Elara</h2>
             <p className="text-xs text-muted-foreground">
