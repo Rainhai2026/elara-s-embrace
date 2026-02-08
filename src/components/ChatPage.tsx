@@ -62,13 +62,19 @@ export function ChatPage() {
         <div className="p-4 space-y-4">
           {/* Welcome message */}
           {messages.length === 0 && (
-            <div className="text-center py-12 space-y-3">
-              <div className="text-5xl">⛓️</div>
-              <h3 className="text-lg font-semibold text-foreground">Bem-vindo ao meu domínio</h3>
-              <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-                *cruza as pernas lentamente, olhando você de cima a baixo* 
-                <br />Então... o que traz você aqui, pet?
-              </p>
+            <div className="relative text-center py-12 space-y-3 overflow-hidden rounded-2xl">
+              <div
+                className="absolute inset-0 opacity-10 bg-cover bg-center"
+                style={{ backgroundImage: "url('https://i.ibb.co/cKLtsYJ6/hotmartdomina.jpg')" }}
+              />
+              <div className="relative z-10">
+                <div className="text-5xl">⛓️</div>
+                <h3 className="text-lg font-semibold text-foreground">Bem-vindo ao meu domínio</h3>
+                <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                  *cruza as pernas lentamente, olhando você de cima a baixo* 
+                  <br />Então... o que traz você aqui, pet?
+                </p>
+              </div>
             </div>
           )}
 
