@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import mistressAvatar from '@/assets/mistress-elara.jpg';
 
 interface LandingPageProps {
   onConsent: () => void;
@@ -12,8 +13,8 @@ export function LandingPage({ onConsent }: LandingPageProps) {
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="max-w-lg w-full text-center space-y-8">
         {/* Logo / Title */}
-        <div className="space-y-2">
-          <div className="text-6xl mb-4">⛓️</div>
+        <div className="space-y-4">
+          <img src={mistressAvatar} alt="Mistress Elara" className="w-28 h-28 rounded-full object-cover border-2 border-primary/60 mx-auto shadow-lg shadow-primary/20" />
           <h1 className="text-4xl md:text-5xl font-bold text-primary tracking-tight">
             Mistress Elara
           </h1>
