@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useChat } from '@/hooks/useChat';
@@ -7,10 +8,11 @@ import { ChatInput } from '@/components/ChatInput';
 import { TypingIndicator } from '@/components/TypingIndicator';
 import { PaywallBanner } from '@/components/PaywallBanner';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Crown } from 'lucide-react';
+import { Crown, Sparkles } from 'lucide-react';
 const MISTRESS_AVATAR = 'https://i.ibb.co/cKLtsYJ6/hotmartdomina.jpg';
 
 export function ChatPage() {
+  const navigate = useNavigate();
   const { user, signInAnonymously } = useAuth();
   const { profile, incrementMessageCount, canSendMessage, remainingMessages } = useProfile(user?.id);
   const { messages, isLoading, sendMessage } = useChat();
@@ -55,6 +57,15 @@ export function ChatPage() {
             </p>
           </div>
         </div>
+        {!isPro && (
+          <button
+            onClick={() => navigate('/modo-extreme')}
+            className="flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-full px-3 py-1.5 transition-colors"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
+            <span className="text-xs font-semibold text-primary">Extreme</span>
+          </button>
+        )}
       </header>
 
       {/* Messages */}
