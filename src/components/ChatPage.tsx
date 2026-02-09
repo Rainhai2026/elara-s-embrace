@@ -64,7 +64,7 @@ export function ChatPage() {
           {messages.length === 0 && (
             <div className="relative text-center py-12 space-y-3 overflow-hidden rounded-2xl">
               <div
-                className="absolute inset-0 opacity-20 bg-cover bg-center"
+                className="absolute inset-0 opacity-30 bg-cover bg-center"
                 style={{ backgroundImage: "url('https://i.ibb.co/cKLtsYJ6/hotmartdomina.jpg')" }}
               />
               <div className="relative z-10">
