@@ -51,14 +51,14 @@ export function useProfile(userId: string | undefined) {
     if (!profile) return false;
     const today = new Date().toISOString().split('T')[0];
     if (profile.last_message_date !== today) return true;
-    return profile.daily_message_count < 25;
+    return profile.daily_message_count < 15;
   };
 
   const remainingMessages = () => {
     if (!profile) return 0;
     const today = new Date().toISOString().split('T')[0];
-    if (profile.last_message_date !== today) return 25;
-    return Math.max(0, 25 - profile.daily_message_count);
+    if (profile.last_message_date !== today) return 15;
+    return Math.max(0, 15 - profile.daily_message_count);
   };
 
   return { profile, loading, incrementMessageCount, canSendMessage, remainingMessages };
