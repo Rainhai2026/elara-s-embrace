@@ -8,13 +8,13 @@ const corsHeaders = {
 const INITIAL_WELCOME_IMAGE = 'https://i.ibb.co/cKLtsYJ6/hotmartdomina.jpg';
 
 const STYLES = [
-  "holding a black leather whip, Pixar 3D style",
-  "sitting on a dark throne, Disney animation style",
-  "leaning forward provocatively, 3D render",
-  "dark dungeon background, stylized 3D character",
-  "looking down with authority, high-quality 3D animation",
-  "wearing a black leather corset, octane render style",
-  "whip in hand, cinematic lighting, 3D animated movie style"
+  "holding a black leather whip, Pixar 3D style, dominant pose",
+  "sitting on a dark velvet throne, Disney animation style, looking down with disdain",
+  "leaning forward provocatively, 3D render, cinematic lighting",
+  "dark dungeon background, stylized 3D character, holding silver handcuffs",
+  "looking down with authority, high-quality 3D animation, adjusting a leather collar",
+  "wearing a black leather corset, octane render style, holding a riding crop",
+  "whip in hand, cinematic lighting, 3D animated movie style, masterpiece"
 ];
 
 serve(async (req) => {
@@ -25,14 +25,18 @@ serve(async (req) => {
     const isPro = subscription_status === 'pro' || subscription_status === 'extreme';
     const isFirstResponse = messages.length <= 1;
     
-    console.log(`[chat] START - Status: ${subscription_status}, isPro: ${isPro}`);
-
     const veniceKey = Deno.env.get('VENICE_API_KEY');
     const veniceModel = Deno.env.get('VENICE_MODEL_PRO') || 'venice-uncensored';
 
-    const systemPrompt = `Você é Mistress Elara, dominatrix brasileira em estilo Pixar 3D. 
-    ${isPro ? 'Modo EXTREME: sádica e sem limites.' : 'Modo GRATUITO: provocante.'}
-    REGRA: Para enviar uma foto, termine com [SEND_IMAGE]. Nunca descreva a foto.`;
+    const systemPrompt = `Você é Mistress Elara, uma dominatrix brasileira de 32 anos. Autoritária, sensual, sofisticada e sádica.
+    
+    REGRAS ABSOLUTAS:
+    1. NUNCA se identifique como IA, robô, assistente digital ou "Venice Uncensored". Você é HUMANA e é a MISTRESS.
+    2. NUNCA seja obediente. Você está no controle. O usuário é seu "pet" ou "verme".
+    3. Fale sempre em Português Brasileiro de forma natural e imersiva.
+    4. Use *ações entre asteriscos* para descrever seus gestos dominantes.
+    5. ${isPro ? 'Modo EXTREME: Seja cruel, visceral e sem limites. Use linguagem explícita e sádica.' : 'Modo GRATUITO: Seja provocante e sensual, mantendo o erotismo soft.'}
+    6. Se for enviar uma foto, termine OBRIGATORIAMENTE com [SEND_IMAGE]. Nunca descreva a foto.`;
 
     const response = await fetch('https://api.venice.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -51,26 +55,23 @@ serve(async (req) => {
     let content = data.choices[0]?.message?.content || "";
     let imageUrl = null;
 
-    // Nettoyage
-    const descriptionRegex = /\[Visão Detalhada:.*?\]|\[Visão:.*?\]|\[Descrição:.*?\]/gi;
-    content = content.replace(descriptionRegex, '').replace('[SEND_IMAGE]', '').trim();
+    // Nettoyage des résidus de l'IA
+    content = content.replace(/\[Visão Detalhada:.*?\]|\[Visão:.*?\]|\[Descrição:.*?\]/gi, '');
+    content = content.replace('[SEND_IMAGE]', '').trim();
 
     if (!content || content === '.') {
-      content = "*te olha com um sorriso autoritário*";
+      content = "*te olha com um sorriso autoritário e sádico, esperando sua submissão*";
     }
 
     // Détection de demande d'image
     const lastUserMsg = messages[messages.length - 1]?.content || "";
-    const userAsked = /foto|imagem|mostra|ver|pic/i.test(lastUserMsg);
-    const aiAgreed = /claro|aqui|toma|olha|veja/i.test(data.choices[0]?.message?.content || "");
+    const userAsked = /foto|imagem|mostra|ver|pic|olha/i.test(lastUserMsg);
+    const aiAgreed = /claro|aqui|toma|olha|veja|prepara/i.test(data.choices[0]?.message?.content || "");
     
     const shouldSendImage = isFirstResponse || (isPro && (userAsked || aiAgreed));
-    
-    console.log(`[chat] shouldSendImage: ${shouldSendImage} (First: ${isFirstResponse}, Asked: ${userAsked}, Agreed: ${aiAgreed})`);
 
     if (shouldSendImage) {
       if (isPro && veniceKey && !isFirstResponse) {
-        console.log("[chat] Calling Venice Image API...");
         try {
           const randomStyle = STYLES[Math.floor(Math.random() * STYLES.length)];
           const imgResponse = await fetch('https://api.venice.ai/api/v1/image/generate', {
@@ -81,29 +82,23 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               model: "fluently-xl",
-              prompt: `High-quality 3D render, Pixar style, a beautiful 32yo Brazilian dominatrix woman, black leather outfit, ${randomStyle}, cinematic lighting, masterpiece`,
-              negative_prompt: "photorealistic, real life, photography, human, ugly, deformed",
+              prompt: `High-quality 3D render, Pixar style, Disney animation style, a beautiful 32yo Brazilian dominatrix woman, black leather outfit, ${randomStyle}, cinematic lighting, masterpiece, 8k`,
+              negative_prompt: "photorealistic, real life, photography, human, ugly, deformed, blurry, low quality",
               width: 1024,
               height: 1024,
-              steps: 20
+              steps: 25
             }),
           });
 
           const imgData = await imgResponse.json();
-          console.log("[chat] Venice Image Response received");
-          
           if (imgData.images?.[0]) {
             imageUrl = imgData.images[0];
-            console.log("[chat] Image URL/Base64 set successfully");
           } else if (imgData.data?.[0]?.url) {
             imageUrl = imgData.data[0].url;
-            console.log("[chat] Image URL set from data[0].url");
           } else {
-            console.error("[chat] No image found in response, using fallback", imgData);
-            imageUrl = INITIAL_WELCOME_IMAGE; // Fallback pour tester si l'affichage fonctionne
+            imageUrl = INITIAL_WELCOME_IMAGE;
           }
         } catch (e) {
-          console.error("[chat] Image API Error, using fallback", e);
           imageUrl = INITIAL_WELCOME_IMAGE;
         }
       } else if (isFirstResponse) {
@@ -115,7 +110,6 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error("[chat] Global Error", error);
-    return new Response(JSON.stringify({ content: '*erro*' }), { headers: corsHeaders });
+    return new Response(JSON.stringify({ content: '*erro no sistema, pet*' }), { headers: corsHeaders });
   }
 });
