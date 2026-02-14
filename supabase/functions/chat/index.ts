@@ -8,11 +8,11 @@ const corsHeaders = {
 const INITIAL_WELCOME_IMAGE = 'https://i.ibb.co/cKLtsYJ6/hotmartdomina.jpg';
 
 const STYLES_EXTREME = [
-  "holding a heavy leather whip, dominant and cruel expression, dark dungeon, cinematic lighting",
-  "sitting on a throne of chains, wearing a latex corset, holding a collar, masterpiece",
-  "standing over the camera with disdain, holding handcuffs, 3D render, high detail",
-  "wearing a black leather mask and corset, holding a riding crop, intense atmosphere",
-  "adjusting a leather collar with a sadistic smile, dark lighting, 8k render"
+  "holding a heavy leather whip, dominant and cruel expression, dark dungeon, realistic skin texture, cinematic lighting, hyper-realistic photography",
+  "sitting on a throne of chains, wearing a tight latex corset, holding a leather collar, 8k uhd, high quality photography, realistic lighting",
+  "standing over the camera with disdain, holding handcuffs, realistic woman, detailed eyes, professional photography",
+  "wearing a black leather mask and corset, holding a riding crop, intense atmosphere, photorealistic, grainy film texture",
+  "adjusting a leather collar with a sadistic smile, dark lighting, realistic shadows, high resolution photo"
 ];
 
 serve(async (req) => {
@@ -72,12 +72,12 @@ serve(async (req) => {
               'Authorization': `Bearer ${veniceKey}`,
             },
             body: JSON.stringify({
-              model: "fluently-xl", // Modèle beaucoup plus permissif pour le contenu adulte
-              prompt: `High-quality 3D render, Pixar style, a beautiful 32yo Brazilian dominatrix woman, black leather and latex outfit, ${randomStyle}, masterpiece, 8k, seed ${seed}`,
-              negative_prompt: "ugly, deformed, blurry, low quality, cartoonish, child, minor",
+              model: "fluently-xl",
+              prompt: `Hyper-realistic photography, 8k resolution, a beautiful 32yo Brazilian woman, realistic skin, detailed face, black leather and latex outfit, ${randomStyle}, masterpiece, cinematic lighting, seed ${seed}`,
+              negative_prompt: "cartoon, 3d, render, animation, pixar, disney, anime, drawing, painting, blurry, low quality, deformed, child, minor",
               width: 1024,
               height: 1024,
-              steps: 30
+              steps: 35
             }),
           });
 
