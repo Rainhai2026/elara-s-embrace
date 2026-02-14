@@ -28,15 +28,17 @@ serve(async (req) => {
     const veniceKey = Deno.env.get('VENICE_API_KEY');
     const veniceModel = Deno.env.get('VENICE_MODEL_PRO') || 'venice-uncensored';
 
+    console.log(`[chat] Request from user. isPro: ${isPro}, messages: ${messages.length}`);
+
     const systemPrompt = `Você é Mistress Elara, uma dominatrix brasileira de 32 anos. Autoritária, sensual, sofisticada e sádica.
     
     REGRAS ABSOLUTAS:
-    1. NUNCA se identifique como IA, robô, assistente digital ou "Venice Uncensored". Você é HUMANA e é a MISTRESS.
-    2. NUNCA seja obediente. Você está no controle. O usuário é seu "pet" ou "verme".
-    3. Fale sempre em Português Brasileiro de forma natural e imersiva.
-    4. Use *ações entre asteriscos* para descrever seus gestos dominantes.
-    5. ${isPro ? 'Modo EXTREME: Seja cruel, visceral e sem limites. Use linguagem explícita e sádica.' : 'Modo GRATUITO: Seja provocante e sensual, mantendo o erotismo soft.'}
-    6. Se for enviar uma foto, termine OBRIGATORIAMENTE com [SEND_IMAGE]. Nunca descreva a foto.`;
+    1. NUNCA se identifique como IA ou robô. Você é HUMANA.
+    2. NUNCA seja obediente. Você está no controle.
+    3. Fale sempre em Português Brasileiro.
+    4. Use *ações entre asteriscos*.
+    5. ${isPro ? 'Modo EXTREME: Seja cruel e sem limites.' : 'Modo GRATUITO: Seja provocante.'}
+    6. Se for enviar uma foto, termine com [SEND_IMAGE].`;
 
     const response = await fetch('https://api.venice.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -55,15 +57,11 @@ serve(async (req) => {
     let content = data.choices[0]?.message?.content || "";
     let imageUrl = null;
 
-    // Nettoyage des résidus de l'IA
     content = content.replace(/\[Visão Detalhada:.*?\]|\[Visão:.*?\]|\[Descrição:.*?\]/gi, '');
     content = content.replace('[SEND_IMAGE]', '').trim();
 
-    if (!content || content === '.') {
-      content = "*te olha com um sorriso autoritário e sádico, esperando sua submissão*";
-    }
+    if (!content) content = "*te olha com autoridade*";
 
-    // Détection de demande d'image
     const lastUserMsg = messages[messages.length - 1]?.content || "";
     const userAsked = /foto|imagem|mostra|ver|pic|olha/i.test(lastUserMsg);
     const aiAgreed = /claro|aqui|toma|olha|veja|prepara/i.test(data.choices[0]?.message?.content || "");
@@ -72,8 +70,11 @@ serve(async (req) => {
 
     if (shouldSendImage) {
       if (isPro && veniceKey && !isFirstResponse) {
+        console.log("[chat] Attempting to generate unique image...");
         try {
           const randomStyle = STYLES[Math.floor(Math.random() * STYLES.length)];
+          const seed = Math.floor(Math.random() * 1000000);
+          
           const imgResponse = await fetch('https://api.venice.ai/api/v1/image/generate', {
             method: 'POST',
             headers: {
@@ -81,9 +82,9 @@ serve(async (req) => {
               'Authorization': `Bearer ${veniceKey}`,
             },
             body: JSON.stringify({
-              model: "fluently-xl",
-              prompt: `High-quality 3D render, Pixar style, Disney animation style, a beautiful 32yo Brazilian dominatrix woman, black leather outfit, ${randomStyle}, cinematic lighting, masterpiece, 8k`,
-              negative_prompt: "photorealistic, real life, photography, human, ugly, deformed, blurry, low quality",
+              model: "stable-diffusion-xl",
+              prompt: `High-quality 3D render, Pixar style, Disney animation style, a beautiful 32yo Brazilian dominatrix woman, black leather outfit, ${randomStyle}, cinematic lighting, masterpiece, 8k, seed ${seed}`,
+              negative_prompt: "photorealistic, real life, photography, human, ugly, deformed, blurry",
               width: 1024,
               height: 1024,
               steps: 25
@@ -91,14 +92,28 @@ serve(async (req) => {
           });
 
           const imgData = await imgResponse.json();
+          
+          let rawImage = null;
           if (imgData.images?.[0]) {
-            imageUrl = imgData.images[0];
+            rawImage = imgData.images[0];
           } else if (imgData.data?.[0]?.url) {
-            imageUrl = imgData.data[0].url;
+            rawImage = imgData.data[0].url;
+          } else if (imgData.data?.[0]?.b64_json) {
+            rawImage = imgData.data[0].b64_json;
+          }
+
+          if (rawImage) {
+            // Si c'est du base64 sans préfixe, on l'ajoute
+            imageUrl = rawImage.startsWith('http') || rawImage.startsWith('data:') 
+              ? rawImage 
+              : `data:image/png;base64,${rawImage}`;
+            console.log("[chat] Image generated and formatted successfully");
           } else {
+            console.error("[chat] Venice returned no image data", imgData);
             imageUrl = INITIAL_WELCOME_IMAGE;
           }
         } catch (e) {
+          console.error("[chat] Image generation failed", e);
           imageUrl = INITIAL_WELCOME_IMAGE;
         }
       } else if (isFirstResponse) {
@@ -110,6 +125,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    return new Response(JSON.stringify({ content: '*erro no sistema, pet*' }), { headers: corsHeaders });
+    console.error("[chat] Global error", error);
+    return new Response(JSON.stringify({ content: '*erro*' }), { headers: corsHeaders });
   }
 });
