@@ -50,20 +50,19 @@ serve(async (req) => {
     let content = data.choices[0]?.message?.content || "";
     let imageUrl = null;
 
-    // Détection ultra-sensible
+    // Détection ultra-robuste
     const lastUserMsg = messages[messages.length - 1]?.content || "";
     const prevAiMsg = messages.length >= 2 ? messages[messages.length - 2]?.content : "";
     
-    const userAsked = /foto|imagem|mostra|ver|pic|olha|photo|image/i.test(lastUserMsg);
+    const userAskedExplicitly = /foto|imagem|mostra|ver|pic|olha|photo|image/i.test(lastUserMsg);
     const userSaidYes = /sim|quero|ok|yes|claro|com certeza/i.test(lastUserMsg) && /ver|mostrar|foto|imagem|quer/i.test(prevAiMsg);
     const aiWantsToSend = content.includes('[SEND_IMAGE]') || /olhe|veja|mostro|aqui está/i.test(content);
 
-    // Nettoyage
+    // Nettoyage du texte
     content = content.replace(/\[SEND_IMAGE\]/g, '').replace(/\*.*?\*/g, '').trim();
-    
     if (!content && aiWantsToSend) content = "Olhe para mim.";
 
-    const shouldSendImage = isFirstResponse || (isPro && (userAsked || userSaidYes || aiWantsToSend));
+    const shouldSendImage = isFirstResponse || (isPro && (userAskedExplicitly || userSaidYes || aiWantsToSend));
 
     if (shouldSendImage && veniceKey) {
       try {
@@ -87,7 +86,6 @@ serve(async (req) => {
         });
 
         const imgData = await imgResponse.json();
-        // Venice peut renvoyer l'image dans différents formats selon la config
         let rawImage = imgData.images?.[0] || imgData.data?.[0]?.url || imgData.data?.[0]?.b64_json;
 
         if (rawImage) {
@@ -95,6 +93,11 @@ serve(async (req) => {
         }
       } catch (e) {
         console.error("[chat] Image generation failed", e);
+      }
+      
+      // FALLBACK: Si la génération a échoué mais qu'une image était demandée, on envoie l'image de base
+      if (!imageUrl) {
+        imageUrl = INITIAL_WELCOME_IMAGE;
       }
     }
 
@@ -104,6 +107,6 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    return new Response(JSON.stringify({ content: 'Erro no sistema.' }), { headers: corsHeaders });
+    return new Response(JSON.stringify({ content: 'Erro no sistema, pet.' }), { headers: corsHeaders });
   }
 });
