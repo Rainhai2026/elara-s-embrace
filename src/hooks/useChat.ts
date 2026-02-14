@@ -17,6 +17,7 @@ export function useChat() {
     setIsLoading(true);
 
     try {
+      // Utilisation de l'URL complète pour garantir la connexion
       const { data, error } = await supabase.functions.invoke('chat', {
         body: {
           messages: updatedMessages,
@@ -39,7 +40,7 @@ export function useChat() {
       console.error('Chat error details:', err);
       setMessages(prev => [
         ...prev,
-        { role: 'assistant', content: '*suspira irritada* Algo deu errado na minha conexão, pet. Verifique se a Edge Function está ativa.' },
+        { role: 'assistant', content: '*suspira irritada* Algo deu errado na minha conexão, pet. Verifique se as chaves de API estão configuradas no Supabase.' },
       ]);
     } finally {
       setIsLoading(false);
