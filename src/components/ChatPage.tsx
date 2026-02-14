@@ -5,7 +5,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { useChat } from '@/hooks/useChat';
 import { ChatMessageBubble } from '@/components/ChatMessage';
 import { ChatInput } from '@/components/ChatInput';
-import { TypingIndicator } from '@/typingindicator';
+import { TypingIndicator } from '@/components/TypingIndicator';
 import { PaywallBanner } from '@/components/PaywallBanner';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Crown, Sparkles, Trash2, RefreshCcw, Zap } from 'lucide-react';
