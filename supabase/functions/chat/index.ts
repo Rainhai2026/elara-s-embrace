@@ -5,20 +5,18 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Liste d'images de secours variées
 const TEASER_IMAGES = [
   'https://i.ibb.co/cKLtsYJ6/hotmartdomina.jpg',
-  'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?q=80&w=1000&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1509248961158-e54f6934749c?q=80&w=1000&auto=format&fit=crop'
+  'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?q=80&w=1000&auto=format&fit=crop'
 ];
 
 const STYLES = [
-  "wearing a black latex bodysuit, sitting on a throne",
-  "wearing a sophisticated leather corset, holding a whip",
-  "in a dark luxury office, looking authoritative",
-  "standing in a dimly lit dungeon, mysterious atmosphere",
-  "close up portrait, intense gaze, red lipstick",
-  "wearing high heels, elegant pose, cinematic lighting"
+  "wearing a black latex bodysuit, sitting on a velvet throne, dark studio background",
+  "wearing a sophisticated leather corset, holding a leather whip, intense gaze",
+  "in a luxury penthouse office, wearing professional but sensual attire, looking authoritative",
+  "standing in a dimly lit dungeon with chains, mysterious and dominant atmosphere",
+  "extreme close up portrait, red lipstick, detailed skin texture, sharp focus",
+  "wearing high heels and stockings, elegant dominant pose, cinematic rim lighting"
 ];
 
 serve(async (req) => {
@@ -65,7 +63,6 @@ serve(async (req) => {
       
       if (isPro) {
         try {
-          // Sélection d'un style aléatoire pour garantir la variété
           const randomStyle = STYLES[Math.floor(Math.random() * STYLES.length)];
           
           const imgResponse = await fetch('https://api.venice.ai/api/v1/image/generate', {
@@ -76,18 +73,18 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               model: "fluently-xl",
-              prompt: `High-quality 3D stylized character render, Pixar style, beautiful 32yo Brazilian dominatrix, ${randomStyle}, sophisticated, authoritative, sensual, vibrant colors, soft cinematic lighting, 3D character design`,
-              negative_prompt: "realistic, photo, real life, ugly, deformed, blurry, low quality, 2d, anime, duplicate",
+              prompt: `Photorealistic, high-quality 8k portrait of a beautiful 32yo Brazilian dominatrix, ${randomStyle}, sophisticated, authoritative, sensual, cinematic lighting, detailed skin texture, professional photography, masterpiece`,
+              negative_prompt: "cartoon, 3d, render, pixar, anime, drawing, painting, digital art, ugly, deformed, blurry, low quality, duplicate, watermark",
               width: 1024,
               height: 1024,
-              steps: 30,
+              steps: 35,
               hide_watermark: true
             }),
           });
           const imgData = await imgResponse.json();
-          imageUrl = imgData.images?.[0] || TEASER_IMAGES[Math.floor(Math.random() * TEASER_IMAGES.length)];
+          imageUrl = imgData.images?.[0] || TEASER_IMAGES[0];
         } catch (e) {
-          imageUrl = TEASER_IMAGES[Math.floor(Math.random() * TEASER_IMAGES.length)];
+          imageUrl = TEASER_IMAGES[0];
         }
       } else {
         imageUrl = TEASER_IMAGES[0];
