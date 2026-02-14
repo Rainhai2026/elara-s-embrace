@@ -8,7 +8,7 @@ interface Profile {
   last_message_date: string;
 }
 
-const MAX_FREE_MESSAGES = 50; // Augmenté pour le test
+const MAX_FREE_MESSAGES = 50;
 const MAX_PRO_IMAGES = 5;
 const LOCAL_STORAGE_KEY = 'elara_guest_profile';
 
@@ -65,6 +65,17 @@ export function useProfile(userId: string | undefined) {
     }
   };
 
+  const toggleExtreme = async () => {
+    if (!profile) return;
+    const newStatus = profile.subscription_status === 'extreme' ? 'free' : 'extreme';
+    const updatedProfile = { ...profile, subscription_status: newStatus };
+    setProfile(updatedProfile);
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedProfile));
+    if (userId) {
+      await supabase.from('profiles').update({ subscription_status: newStatus }).eq('user_id', userId);
+    }
+  };
+
   const resetCounts = async () => {
     const resetProfile = { 
       subscription_status: 'free', 
@@ -75,7 +86,7 @@ export function useProfile(userId: string | undefined) {
     setProfile(resetProfile);
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(resetProfile));
     if (userId) {
-      await supabase.from('profiles').update({ daily_message_count: 0, daily_image_count: 0 }).eq('user_id', userId);
+      await supabase.from('profiles').update({ daily_message_count: 0, daily_image_count: 0, subscription_status: 'free' }).eq('user_id', userId);
     }
   };
 
@@ -89,6 +100,7 @@ export function useProfile(userId: string | undefined) {
     loading, 
     incrementMessageCount, 
     resetCounts,
+    toggleExtreme,
     remainingMessages, 
     canSendMessage: () => (profile?.subscription_status === 'pro' || profile?.subscription_status === 'extreme') || remainingMessages() > 0,
   };

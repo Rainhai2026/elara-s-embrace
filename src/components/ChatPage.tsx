@@ -5,10 +5,10 @@ import { useProfile } from '@/hooks/useProfile';
 import { useChat } from '@/hooks/useChat';
 import { ChatMessageBubble } from '@/components/ChatMessage';
 import { ChatInput } from '@/components/ChatInput';
-import { TypingIndicator } from '@/components/TypingIndicator';
+import { TypingIndicator } from '@/typingindicator';
 import { PaywallBanner } from '@/components/PaywallBanner';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Crown, Sparkles, Trash2, RefreshCcw } from 'lucide-react';
+import { Crown, Sparkles, Trash2, RefreshCcw, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const MISTRESS_AVATAR = 'https://i.ibb.co/cKLtsYJ6/hotmartdomina.jpg';
@@ -16,7 +16,7 @@ const MISTRESS_AVATAR = 'https://i.ibb.co/cKLtsYJ6/hotmartdomina.jpg';
 export function ChatPage() {
   const navigate = useNavigate();
   const { user, signInAnonymously } = useAuth();
-  const { profile, incrementMessageCount, resetCounts, canSendMessage, remainingMessages } = useProfile(user?.id);
+  const { profile, incrementMessageCount, resetCounts, toggleExtreme, canSendMessage, remainingMessages } = useProfile(user?.id);
   const { messages, isLoading, sendMessage, clearMessages } = useChat();
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -57,6 +57,15 @@ export function ChatPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={toggleExtreme} 
+            className={`h-8 w-8 ${isPro ? 'text-primary' : 'text-muted-foreground'} hover:text-primary`}
+            title="Toggle Extreme (Dev)"
+          >
+            <Zap className="h-4 w-4" />
+          </Button>
           <Button 
             variant="ghost" 
             size="icon" 
