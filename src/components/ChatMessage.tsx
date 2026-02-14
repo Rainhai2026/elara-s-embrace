@@ -11,37 +11,37 @@ export function ChatMessageBubble({ role, content, imageUrl }: ChatMessageProps)
   const isUser = role === 'user';
 
   return (
-    <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+    <div className={`flex gap-2 ${isUser ? 'flex-row-reverse' : 'flex-row'} items-end mb-2`}>
       {!isUser && (
         <img 
           src={MISTRESS_AVATAR} 
           alt="Mistress Elara" 
-          className="flex-shrink-0 w-9 h-9 rounded-full object-cover border border-primary/40 self-end mb-1" 
+          className="flex-shrink-0 w-8 h-8 rounded-full object-cover border border-primary/30 mb-1" 
         />
       )}
       
-      <div className={`flex flex-col gap-2 max-w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
+      <div className={`flex flex-col gap-1 max-w-[85%] ${isUser ? 'items-end' : 'items-start'}`}>
         {imageUrl && (
-          <div className="overflow-hidden rounded-2xl">
+          <div className="overflow-hidden rounded-2xl border border-border/50 shadow-sm mb-1 max-w-[280px]">
             <img 
               src={imageUrl} 
               alt="Mistress Elara" 
-              className="w-full h-auto object-cover max-h-[400px]" 
+              className="w-full h-auto object-cover" 
             />
           </div>
         )}
         
         <div
-          className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+          className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm ${
             isUser
-              ? 'bg-primary/20 border border-primary/30 text-foreground rounded-br-md'
-              : 'bg-card border border-border text-foreground rounded-bl-md'
+              ? 'bg-primary text-primary-foreground rounded-br-none'
+              : 'bg-card border border-border text-foreground rounded-bl-none'
           }`}
         >
           {isUser ? (
             <p>{content}</p>
           ) : (
-            <div className="prose prose-invert prose-sm max-w-none">
+            <div className="prose prose-invert prose-sm max-w-none break-words">
               <ReactMarkdown>{content}</ReactMarkdown>
             </div>
           )}

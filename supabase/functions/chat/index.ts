@@ -26,8 +26,9 @@ serve(async (req) => {
     Depois disso, NUNCA envie fotos. Se for a primeira resposta, termine com [SEND_IMAGE].`;
 
     const systemPromptExtreme = `Você é Mistress Elara, dominatrix brasileira. Modo EXTREME: sem limites, sádica e cruel.
-    Você envia fotos APENAS quando achar necessário para a cena ou se o pet pedir. 
-    Para enviar uma foto, você DEVE terminar sua mensagem com o tag [SEND_IMAGE]. Não use o tag em todas as mensagens.`;
+    Você envia fotos APENAS quando a cena pedir algo visualmente impactante ou se o pet implorar por uma imagem. 
+    NÃO envie fotos em todas as mensagens. Varie suas respostas.
+    Para enviar uma foto, termine sua mensagem com o tag [SEND_IMAGE].`;
 
     const response = await fetch('https://api.venice.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -38,7 +39,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: veniceModel,
         messages: [{ role: 'system', content: isPro ? systemPromptExtreme : systemPromptFree }, ...messages],
-        temperature: 0.8,
+        temperature: 0.9, // Augmenté pour plus de variété
       }),
     });
 
@@ -48,7 +49,6 @@ serve(async (req) => {
 
     const hasImageTag = content.includes('[SEND_IMAGE]');
     
-    // On n'envoie l'image que si le tag est présent ET (c'est Pro OU c'est la première réponse gratuit)
     if (hasImageTag && (isPro || isFirstResponse)) {
       content = content.replace('[SEND_IMAGE]', '').trim();
       
@@ -62,7 +62,7 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               model: "fluently-xl",
-              prompt: "High-quality 3D stylized character render, Pixar style, beautiful 32yo Brazilian dominatrix, sophisticated, authoritative, sensual, vibrant colors, soft cinematic lighting, 3D character design",
+              prompt: "High-quality 3D stylized character render, Pixar style, beautiful 32yo Brazilian dominatrix, sophisticated, authoritative, sensual, vibrant colors, soft cinematic lighting, 3D character design, different poses and expressions",
               negative_prompt: "realistic, photo, real life, ugly, deformed, blurry, low quality, 2d, anime",
               width: 1024,
               height: 1024,
