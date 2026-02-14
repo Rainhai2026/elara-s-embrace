@@ -24,7 +24,10 @@ export function useChat() {
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase Function Error:', error);
+        throw error;
+      }
 
       const assistantMessage: ChatMessage = {
         role: 'assistant',
@@ -33,10 +36,10 @@ export function useChat() {
 
       setMessages(prev => [...prev, assistantMessage]);
     } catch (err) {
-      console.error('Chat error:', err);
+      console.error('Chat error details:', err);
       setMessages(prev => [
         ...prev,
-        { role: 'assistant', content: '*suspira irritada* Algo deu errado, pet. Tente novamente.' },
+        { role: 'assistant', content: '*suspira irritada* Algo deu errado na minha conexão, pet. Verifique se a Edge Function está ativa.' },
       ]);
     } finally {
       setIsLoading(false);
