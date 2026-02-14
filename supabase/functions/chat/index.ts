@@ -5,11 +5,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Liste de teasers pour varier les plaisirs en mode gratuit
+// On garde uniquement l'avatar de base qui est stylisé pour le mode gratuit
 const TEASER_IMAGES = [
-  'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&q=80&w=800', // Fashion/Sensual 1
-  'https://images.unsplash.com/photo-1581044777550-4cfa60707c03?auto=format&fit=crop&q=80&w=800', // Fashion/Sensual 2
-  'https://i.ibb.co/cKLtsYJ6/hotmartdomina.jpg' // L'image originale
+  'https://i.ibb.co/cKLtsYJ6/hotmartdomina.jpg'
 ];
 
 serve(async (req) => {
@@ -24,8 +22,7 @@ serve(async (req) => {
 
     const systemPromptFree = `Você é Mistress Elara, dominatrix brasileira. 
     No modo GRATUITO, você é provocante e sensual. 
-    REGRA ABSOLUTA: Se você disser que está enviando uma foto, imagem ou teaser, você DEVE terminar sua mensagem com [SEND_IMAGE].
-    Sempre que o usuário pedir para ver você, envie o teaser para deixá-lo com vontade.`;
+    REGRA ABSOLUTA: Se você disser que está enviando uma foto, imagem ou teaser, você DEVE terminar sua mensagem com [SEND_IMAGE].`;
 
     const systemPromptExtreme = `Você é Mistress Elara, dominatrix brasileira. Modo EXTREME: sem limites, sádica e cruel.
     Você envia fotos com frequência. Termine sempre com [SEND_IMAGE] quando enviar uma.`;
@@ -64,8 +61,9 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               model: "fluently-xl",
-              prompt: "Professional photo of a beautiful 32yo Brazilian dominatrix, sophisticated, authoritative, sensual, high quality, realistic, cinematic lighting",
-              negative_prompt: "ugly, deformed, blurry, low quality, cartoon, 3d",
+              // PROMPT MODIFIÉ POUR LE STYLE PIXAR 3D
+              prompt: "High-quality 3D stylized character render, Pixar style, Disney animation style, beautiful 32yo Brazilian dominatrix, sophisticated, authoritative, sensual, vibrant colors, soft cinematic lighting, 3D character design, octane render, masterpiece",
+              negative_prompt: "realistic, photo, photography, real life, ugly, deformed, blurry, low quality, sketch, drawing, 2d, anime",
               width: 1024,
               height: 1024,
               steps: 30,
@@ -75,11 +73,10 @@ serve(async (req) => {
           const imgData = await imgResponse.json();
           imageUrl = imgData.images?.[0] || TEASER_IMAGES[0];
         } catch (e) {
-          imageUrl = TEASER_IMAGES[Math.floor(Math.random() * TEASER_IMAGES.length)];
+          imageUrl = TEASER_IMAGES[0];
         }
       } else {
-        // Sélection aléatoire d'un teaser pour le mode gratuit
-        imageUrl = TEASER_IMAGES[Math.floor(Math.random() * TEASER_IMAGES.length)];
+        imageUrl = TEASER_IMAGES[0];
       }
     }
 
