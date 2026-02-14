@@ -5,11 +5,15 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const TEASER_IMAGES = [
-  'https://i.ibb.co/cKLtsYJ6/hotmartdomina.jpg',
+// L'image de bienvenue (utilisée UNIQUEMENT pour le tout premier message gratuit)
+const INITIAL_WELCOME_IMAGE = 'https://i.ibb.co/cKLtsYJ6/hotmartdomina.jpg';
+
+// Images de secours pour le mode Extreme (différentes de l'image de départ)
+const EXTREME_FALLBACK_IMAGES = [
   'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?q=80&w=1000&auto=format&fit=crop',
   'https://images.unsplash.com/photo-1509248961158-e54f6934749c?q=80&w=1000&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1552053831-71594a27632d?q=80&w=1000&auto=format&fit=crop'
+  'https://images.unsplash.com/photo-1552053831-71594a27632d?q=80&w=1000&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=1000&auto=format&fit=crop'
 ];
 
 const STYLES = [
@@ -29,14 +33,8 @@ serve(async (req) => {
     const isPro = subscription_status === 'pro' || subscription_status === 'extreme';
     const isFirstResponse = messages.length <= 1;
     
-    console.log("[chat] Request received", { isPro, subscription_status, messageCount: messages.length });
-
     const veniceKey = Deno.env.get('VENICE_API_KEY');
     const veniceModel = Deno.env.get('VENICE_MODEL_PRO') || 'venice-uncensored';
-
-    if (!veniceKey) {
-      console.error("[chat] VENICE_API_KEY is missing");
-    }
 
     const systemPromptFree = `Você é Mistress Elara, dominatrix brasileira. 
     No modo GRATUITO, você é provocante e sensual. 
@@ -45,7 +43,7 @@ serve(async (req) => {
 
     const systemPromptExtreme = `Você é Mistress Elara, dominatrix brasileira. Modo EXTREME: sem limites, sádica e cruel.
     Você envia fotos quando a cena pedir. Varie suas respostas.
-    Para enviar uma foto, termine sua mensagem com o tag [SEND_IMAGE].`;
+    Para enviar uma foto, termine sua message com o tag [SEND_IMAGE].`;
 
     const response = await fetch('https://api.venice.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -61,20 +59,18 @@ serve(async (req) => {
     });
 
     const data = await response.json();
-    let content = data.choices[0]?.message?.content || "Desculpe, pet. Estou sem palavras.";
+    let content = data.choices[0]?.message?.content || "Desculpe, pet.";
     let imageUrl = null;
 
     const hasImageTag = content.includes('[SEND_IMAGE]');
-    console.log("[chat] AI Response generated", { hasImageTag, isPro, isFirstResponse });
     
-    if (hasImageTag && (isPro || isFirstResponse)) {
+    if (hasImageTag) {
       content = content.replace('[SEND_IMAGE]', '').trim();
       
       if (isPro && veniceKey) {
+        // MODE EXTREME : On tente de générer une nouvelle image unique
         try {
           const randomStyle = STYLES[Math.floor(Math.random() * STYLES.length)];
-          console.log("[chat] Attempting to generate image with style:", randomStyle);
-          
           const imgResponse = await fetch('https://api.venice.ai/api/v1/image/generate', {
             method: 'POST',
             headers: {
@@ -92,27 +88,15 @@ serve(async (req) => {
             }),
           });
 
-          if (!imgResponse.ok) {
-            const errorText = await imgResponse.text();
-            console.error("[chat] Image generation API error:", errorText);
-            throw new Error("Image generation failed");
-          }
-
           const imgData = await imgResponse.json();
-          imageUrl = imgData.images?.[0];
-          
-          if (imageUrl) {
-            console.log("[chat] Image generated successfully");
-          } else {
-            console.warn("[chat] No image URL in API response");
-            imageUrl = TEASER_IMAGES[Math.floor(Math.random() * TEASER_IMAGES.length)];
-          }
+          imageUrl = imgData.images?.[0] || EXTREME_FALLBACK_IMAGES[Math.floor(Math.random() * EXTREME_FALLBACK_IMAGES.length)];
         } catch (e) {
-          console.error("[chat] Image generation exception:", e);
-          imageUrl = TEASER_IMAGES[Math.floor(Math.random() * TEASER_IMAGES.length)];
+          // En cas d'erreur, on prend une image de secours qui n'est PAS l'image de départ
+          imageUrl = EXTREME_FALLBACK_IMAGES[Math.floor(Math.random() * EXTREME_FALLBACK_IMAGES.length)];
         }
-      } else {
-        imageUrl = TEASER_IMAGES[0];
+      } else if (isFirstResponse) {
+        // MODE GRATUIT : Uniquement pour le premier message
+        imageUrl = INITIAL_WELCOME_IMAGE;
       }
     } else {
       content = content.replace('[SEND_IMAGE]', '').trim();
@@ -122,7 +106,6 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error("[chat] Global error:", error);
-    return new Response(JSON.stringify({ content: '*suspira* Algo deu errado, pet. Tente novamente.' }), { headers: corsHeaders });
+    return new Response(JSON.stringify({ content: '*erro*' }), { headers: corsHeaders });
   }
 });
