@@ -8,8 +8,7 @@ interface Profile {
   last_message_date: string;
 }
 
-const MAX_FREE_MESSAGES = 50;
-const MAX_PRO_IMAGES = 5;
+const MAX_FREE_MESSAGES = 27; // Novo limite solicitado
 const LOCAL_STORAGE_KEY = 'elara_guest_profile';
 
 export function useProfile(userId: string | undefined) {
