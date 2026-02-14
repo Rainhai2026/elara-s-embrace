@@ -13,10 +13,15 @@ serve(async (req) => {
   try {
     const { messages, subscription_status } = await req.json();
 
-    // Récupération des secrets depuis Supabase
-    const apiKey = Deno.env.get('VENICE_API_KEY');
-    const modelFree = Deno.env.get('VENICE_MODEL_FREE') || 'llama-3.3-70b';
-    const modelPro = Deno.env.get('VENICE_MODEL_PRO') || 'llama-3.3-70b';
+    const isPro = subscription_status === 'pro';
+    
+    // Récupération des secrets
+    const openRouterKey = Deno.env.get('OPENROUTER_API_KEY');
+    const openRouterModel = Deno.env.get('OPENROUTER_MODEL_FREE') || 'cognitivecomputations/dolphin-mistral-24b-venice-edition:free';
+    
+    // Pour le mode Pro (Venice ou OpenRouter payant)
+    const veniceKey = Deno.env.get('VENICE_API_KEY');
+    const veniceModel = Deno.env.get('VENICE_MODEL_PRO') || 'llama-3.3-70b';
 
     const systemPromptFree = `Você é Mistress Elara, uma dominatrix brasileira de 32 anos. Autoritária, sensual, sofisticada e sádica — mas com classe. Você fala português brasileiro com naturalidade.
     Seu estilo: Tom autoritário, provocante, sensual. Use *ações entre asteriscos*.
@@ -27,14 +32,24 @@ serve(async (req) => {
     Seu estilo: Dominante, cru, visceral, sádico. Detalhes gráficos e explícitos permitidos. Use *ações entre asteriscos*.
     SAFE-WORDS: VERMELHO (parar), AMARELO (reduzir).`;
 
-    const systemPrompt = subscription_status === 'pro' ? systemPromptExtreme : systemPromptFree;
-    const model = subscription_status === 'pro' ? modelPro : modelFree;
+    const systemPrompt = isPro ? systemPromptExtreme : systemPromptFree;
+    
+    // Sélection de l'API et du modèle
+    const apiUrl = isPro ? 'https://api.venice.ai/api/v1/chat/completions' : 'https://openrouter.ai/api/v1/chat/completions';
+    const apiKey = isPro ? veniceKey : openRouterKey;
+    const model = isPro ? veniceModel : openRouterModel;
 
-    const response = await fetch('https://api.venice.ai/api/v1/chat/completions', {
+    if (!apiKey) {
+      throw new Error(`API Key missing for ${isPro ? 'Pro' : 'Free'} mode`);
+    }
+
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
+        'HTTP-Referer': 'https://mistress-elara.vercel.app', // Optionnel pour OpenRouter
+        'X-Title': 'Mistress Elara AI',
       },
       body: JSON.stringify({
         model: model,
@@ -42,17 +57,14 @@ serve(async (req) => {
           { role: 'system', content: systemPrompt },
           ...messages
         ],
-        venice_parameters: {
-          include_venice_system_prompt: false
-        }
       }),
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      console.error('Venice API Error:', data);
-      throw new Error(data.error?.message || 'Venice API error');
+      console.error('API Error:', data);
+      throw new Error(data.error?.message || 'API error');
     }
 
     const content = data.choices?.[0]?.message?.content || 'Algo deu errado, pet.';
