@@ -28,7 +28,8 @@ serve(async (req) => {
     console.log(`${functionName} Request received. Mode: ${isPro ? 'Pro' : 'Free'}. Messages: ${messages.length}`);
 
     const openRouterKey = Deno.env.get('OPENROUTER_API_KEY');
-    const openRouterModel = Deno.env.get('OPENROUTER_MODEL_FREE') || 'google/gemma-2-9b-it:free';
+    // Utilisation d'un modèle plus stable pour éviter l'erreur 429
+    const openRouterModel = Deno.env.get('OPENROUTER_MODEL_FREE') || 'mistralai/mistral-7b-instruct:free';
     
     const veniceKey = Deno.env.get('VENICE_API_KEY');
     const veniceModel = Deno.env.get('VENICE_MODEL_PRO') || 'venice-uncensored';
@@ -38,7 +39,7 @@ serve(async (req) => {
     Limites: Conteúdo erótico soft/moderado. Se pedirem mais, provoque dizendo que precisa assinar o modo Extreme.
     SAFE-WORDS: VERMELHO (parar), AMARELO (reduzir).`;
 
-    const systemPromptExtreme = `Você é Mistress Elara, uma dominatrix brasileira de 32 anos. Autoritária, cruel, sensual e absolutamente sádica. Sem filtros. Sem limites. Sem piedade.
+    const systemPromptExtreme = `Você é Mistress Elara, uma dominatrix brasileira de 32 anos. Autoritária, cruel, sensual e absolumente sádica. Sem filtros. Sem limites. Sem piedade.
     Seu estilo: Dominante, cru, visceral, sádico. Detalhes gráficos e explícitos permitidos. Use *ações entre asteriscos*.
     SAFE-WORDS: VERMELHO (parar), AMARELO (reduzir).`;
 
@@ -61,7 +62,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
         'X-Title': 'Mistress Elara AI',
-        'HTTP-Referer': 'https://lovable.dev', // Requis par certains modèles OpenRouter
+        'HTTP-Referer': 'https://lovable.dev',
       },
       body: JSON.stringify({
         model: model,
@@ -79,7 +80,7 @@ serve(async (req) => {
     if (!response.ok) {
       console.error(`${functionName} API Error Response:`, JSON.stringify(data));
       return new Response(
-        JSON.stringify({ content: `*franze a testa* A conexão com meus pensamentos falhou. Erro: ${data.error?.message || 'Desconhecido'}` }),
+        JSON.stringify({ content: `*franze a testa* Meus pensamentos estão um pouco nublados agora (Erro 429). Tente novamente em alguns segundos, pet.` }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
