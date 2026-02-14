@@ -7,6 +7,8 @@ interface Profile {
   last_message_date: string;
 }
 
+const MAX_FREE_MESSAGES = 15;
+
 export function useProfile(userId: string | undefined) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -23,29 +25,33 @@ export function useProfile(userId: string | undefined) {
       
       if (error) throw error;
 
+      const today = new Date().toISOString().split('T')[0];
+
       if (!data) {
-        // Créer un profil par défaut si inexistant
-        const today = new Date().toISOString().split('T')[0];
+        // Création immédiate si le profil n'existe pas
         const { data: newProfile, error: insertError } = await supabase
           .from('profiles')
-          .insert([
-            { 
-              user_id: userId, 
-              subscription_status: 'free',
-              daily_message_count: 0,
-              last_message_date: today
-            }
-          ])
+          .insert([{ 
+            user_id: userId, 
+            subscription_status: 'free',
+            daily_message_count: 0,
+            last_message_date: today
+          }])
           .select()
           .single();
         
         if (insertError) throw insertError;
-        if (newProfile) setProfile(newProfile);
+        setProfile(newProfile);
       } else {
-        setProfile(data);
+        // Si c'est un nouveau jour, on remet le compteur à 0 localement
+        if (data.last_message_date !== today) {
+          setProfile({ ...data, daily_message_count: 0, last_message_date: today });
+        } else {
+          setProfile(data);
+        }
       }
     } catch (err) {
-      console.error("Error fetching/creating profile:", err);
+      console.error("Error in useProfile:", err);
     } finally {
       setLoading(false);
     }
@@ -56,14 +62,21 @@ export function useProfile(userId: string | undefined) {
   }, [fetchProfile]);
 
   const incrementMessageCount = async () => {
-    if (!userId || !profile) return;
+    if (!userId) return;
 
     const today = new Date().toISOString().split('T')[0];
-    const isNewDay = profile.last_message_date !== today;
-    const newCount = isNewDay ? 1 : (profile.daily_message_count || 0) + 1;
+    
+    // On calcule le nouveau compte basé sur l'état actuel ou 0
+    const currentCount = profile?.daily_message_count ?? 0;
+    const isNewDay = profile?.last_message_date !== today;
+    const newCount = isNewDay ? 1 : currentCount + 1;
 
-    // Mise à jour optimiste de l'interface
-    setProfile(prev => prev ? { ...prev, daily_message_count: newCount, last_message_date: today } : null);
+    // MISE À JOUR FORCEE DE L'INTERFACE (Optimiste)
+    setProfile(prev => ({
+      subscription_status: prev?.subscription_status ?? 'free',
+      daily_message_count: newCount,
+      last_message_date: today
+    }));
 
     try {
       const { error } = await supabase
@@ -77,8 +90,8 @@ export function useProfile(userId: string | undefined) {
 
       if (error) throw error;
     } catch (err) {
-      console.error("Error incrementing message count:", err);
-      // En cas d'erreur, on rafraîchit pour revenir à l'état réel de la DB
+      console.error("Failed to sync message count:", err);
+      // En cas d'échec réel, on recharge pour être sûr
       fetchProfile();
     }
   };
@@ -90,18 +103,16 @@ export function useProfile(userId: string | undefined) {
     const today = new Date().toISOString().split('T')[0];
     if (profile.last_message_date !== today) return true;
     
-    return (profile.daily_message_count || 0) < 15;
+    return (profile.daily_message_count || 0) < MAX_FREE_MESSAGES;
   };
 
   const remainingMessages = () => {
-    if (!profile) return 15;
-    if (profile.subscription_status === 'pro' || profile.subscription_status === 'extreme') return 999;
+    if (profile?.subscription_status === 'pro' || profile?.subscription_status === 'extreme') return 999;
     
     const today = new Date().toISOString().split('T')[0];
-    if (profile.last_message_date !== today) return 15;
+    const count = (profile?.last_message_date === today) ? (profile?.daily_message_count ?? 0) : 0;
     
-    const count = profile.daily_message_count || 0;
-    return Math.max(0, 15 - count);
+    return Math.max(0, MAX_FREE_MESSAGES - count);
   };
 
   return { 
