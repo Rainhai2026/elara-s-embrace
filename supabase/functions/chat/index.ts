@@ -16,8 +16,8 @@ serve(async (req) => {
     const isPro = subscription_status === 'pro' || subscription_status === 'extreme';
     const isFirstResponse = messages.length <= 1;
     
-    // Lógica de "milestone": enviar foto a cada 10 mensagens (10, 20, 30...)
-    const isMilestone = message_count > 0 && message_count % 10 === 0;
+    // Lógica de "milestone": enviar foto a cada 3 mensagens para teste (depois voltamos para 10)
+    const isMilestone = message_count > 0 && message_count % 3 === 0;
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -73,7 +73,7 @@ serve(async (req) => {
 
     if (!content && aiWantsToSend) content = "Olhe para sua Dona agora.";
 
-    // Envia imagem se: primeira resposta, milestone de 10 mensagens, ou se for Pro e houver gatilho
+    // Envia imagem se: primeira resposta, milestone, ou se for Pro e houver gatilho
     const shouldSendImage = isFirstResponse || isMilestone || (isPro && (userAsked || userSaidYes || aiWantsToSend));
 
     if (shouldSendImage) {
