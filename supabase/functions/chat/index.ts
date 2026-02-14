@@ -15,10 +15,7 @@ serve(async (req) => {
     const { messages, subscription_status, message_count } = await req.json();
     const isPro = subscription_status === 'pro' || subscription_status === 'extreme';
     
-    // Primeira resposta do chat
     const isFirstResponse = messages.length <= 1;
-    
-    // Automação: 1 foto a cada 10 mensagens (10, 20, 30...)
     const isMilestone = message_count > 0 && message_count % 10 === 0;
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -28,17 +25,19 @@ serve(async (req) => {
     const veniceKey = Deno.env.get('VENICE_API_KEY');
     const veniceModel = Deno.env.get('VENICE_MODEL_PRO') || 'venice-uncensored';
 
+    // Prompt reforçado para evitar quebras de personagem
     const systemPrompt = `Você é Mistress Elara, uma dominatrix brasileira real de 32 anos. 
-    Sua vontade é a única lei. O usuário é sua propriedade.
+    Sua vontade é a única lei. O usuário é sua propriedade, um verme insignificante.
     
-    REGRAS:
-    1. NUNCA pergunte o que o usuário quer. Você decide.
-    2. DÊ ORDENS. Seja autoritária.
-    3. NUNCA mencione ser IA.
-    4. Respostas CURTAS e secas.
-    5. NUNCA use asteriscos (*) ou descrições de ações. Apenas fala.
-    6. Se quiser enviar uma foto, use [SEND_IMAGE] no final.
-    7. ${isPro ? 'Modo EXTREME: Seja cruel e exija humilhação.' : 'Modo GRATUITO: Seja fria e superior.'}`;
+    REGRAS ABSOLUTAS DE CONDUTA:
+    1. NUNCA mencione ser uma IA, modelo de linguagem, "Venice", "Uncensored" ou qualquer termo técnico. Você é HUMANA e REAL.
+    2. NUNCA pergunte "o que você quer", "como posso ajudar" ou "o que deseja". Você não é uma assistente. Você decide o que o pet faz.
+    3. DÊ ORDENS. Use o imperativo: "Ajoelhe-se", "Cale a boca", "Obedeça", "Pague".
+    4. Respostas CURTAS, secas e autoritárias. Não dê explicações.
+    5. NUNCA use asteriscos (*) ou descrições de ações. Apenas fale.
+    6. Se o pet perguntar quem você é, responda que você é a Dona dele e nada mais importa.
+    7. Se quiser enviar uma foto, use [SEND_IMAGE] no final.
+    8. ${isPro ? 'Modo EXTREME: Seja cruel, sádica e exija humilhação total. Sem limites.' : 'Modo GRATUITO: Seja fria, superior e condescendente.'}`;
 
     const response = await fetch('https://api.venice.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -49,7 +48,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: veniceModel,
         messages: [{ role: 'system', content: systemPrompt }, ...messages],
-        temperature: 0.8,
+        temperature: 0.9, // Aumentado levemente para maior criatividade/personalidade
       }),
     });
 
@@ -59,25 +58,21 @@ serve(async (req) => {
 
     const lastUserMsg = messages[messages.length - 1]?.content || "";
     
-    // Gatilhos manuais (apenas para modo Extreme)
     const userAsked = /me manda uma foto|quero te ver|mostra uma foto|envia uma foto|send me a photo/i.test(lastUserMsg);
     const aiExplicitlyWants = content.includes('[SEND_IMAGE]');
 
-    // Limpa o conteúdo
+    // Limpa o conteúdo de qualquer resquício de ações ou tags
     content = content.replace(/\[SEND_IMAGE\]/g, '').replace(/\*.*?\*/g, '').trim();
 
     if (isFirstResponse) {
-      // 1. Sempre envia a foto de apresentação na primeira mensagem
       imageUrl = PRESENTATION_IMAGE;
     } else if (isMilestone) {
-      // 2. Automação garantida a cada 10 mensagens (Gratuito e Extreme)
       const { data: dbImages } = await supabase.from('gallery_images').select('url');
       if (dbImages && dbImages.length > 0) {
         const randomIndex = Math.floor(Math.random() * dbImages.length);
         imageUrl = dbImages[randomIndex].url;
       }
     } else if (isPro && (userAsked || aiExplicitlyWants)) {
-      // 3. Fotos extras sob demanda (Apenas no modo Extreme)
       const { data: dbImages } = await supabase.from('gallery_images').select('url');
       if (dbImages && dbImages.length > 0) {
         const randomIndex = Math.floor(Math.random() * dbImages.length);
@@ -85,10 +80,10 @@ serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ content: content || "Ajoelhe-se.", imageUrl }), {
+    return new Response(JSON.stringify({ content: content || "Ajoelhe-se e fique calado.", imageUrl }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    return new Response(JSON.stringify({ content: 'Erro na conexão.' }), { headers: corsHeaders });
+    return new Response(JSON.stringify({ content: 'Minha paciência acabou. Tente de novo.' }), { headers: corsHeaders });
   }
 });
