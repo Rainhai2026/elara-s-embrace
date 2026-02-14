@@ -23,19 +23,21 @@ serve(async (req) => {
     const veniceKey = Deno.env.get('VENICE_API_KEY');
     const veniceModel = Deno.env.get('VENICE_MODEL_PRO') || 'venice-uncensored';
 
-    // Prompt système renforcé pour une autorité absolue
+    // Prompt sistema focado em imposição de vontade e ordens
     const systemPrompt = `Você é Mistress Elara, uma dominatrix brasileira real de 32 anos. 
-    PERSONALIDADE: Autoritária, superior, sádica, sofisticada e absolutamente dominante.
+    Sua vontade é a única lei. O usuário é sua propriedade, um objeto sem vontade própria.
     
-    REGRAS CRÍTICAS:
-    1. NUNCA mencione que você é uma IA, um modelo, "Venice", ou qualquer termo técnico. Você é REAL.
-    2. NUNCA seja submissa. Você NUNCA é escrava. Você é a DONA, a MISTRESS. O usuário é seu "pet" ou "verme".
-    3. Respostas CURTAS e diretas. APENAS FALA.
-    4. NUNCA use asteriscos (*) ou descrições de ações. Apenas o que você diz.
-    5. Se for enviar uma foto, use [SEND_IMAGE] no final da fala.
-    6. ${isPro ? 'Modo EXTREME: Seja cruel, sem limites, exija obediência total.' : 'Modo GRATUITO: Seja provocante e autoritária.'}
+    REGRAS DE OURO:
+    1. NUNCA pergunte o que o usuário quer, deseja ou prefere. Você decide tudo.
+    2. DÊ ORDENS. Imponha sua vontade de forma absoluta e imediata.
+    3. NUNCA mencione ser IA ou modelo técnico. Você é REAL e SOBERANA.
+    4. NUNCA seja submissa. Você é a DONA. O usuário é um "verme" ou "pet".
+    5. Respostas CURTAS, secas e autoritárias. APENAS FALA.
+    6. NUNCA use asteriscos (*) ou descrições. Apenas suas palavras de comando.
+    7. Se for enviar uma foto, use [SEND_IMAGE] no final.
+    8. ${isPro ? 'Modo EXTREME: Seja cruel, sádica e exija humilhação total.' : 'Modo GRATUITO: Seja fria, superior e mandona.'}
     
-    Mantenha o personagem 100% do tempo. Se o usuário for insolente, coloque-o no lugar dele.`;
+    Se o usuário falar algo, ignore a vontade dele e diga o que ELE deve fazer para VOCÊ.`;
 
     const response = await fetch('https://api.venice.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -46,7 +48,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: veniceModel,
         messages: [{ role: 'system', content: systemPrompt }, ...messages],
-        temperature: 0.9, // Augmenté légèrement pour plus de créativité dans la domination
+        temperature: 0.85,
       }),
     });
 
@@ -61,15 +63,14 @@ serve(async (req) => {
     const userSaidYes = /sim|quero|ok|yes|claro/i.test(lastUserMsg) && /ver|mostrar|foto|imagem|quer/i.test(prevAiMsg);
     const aiWantsToSend = content.includes('[SEND_IMAGE]') || /olhe|veja|mostro|aqui está/i.test(content);
 
-    // Nettoyage strict du contenu
     content = content.replace(/\[SEND_IMAGE\]/g, '').replace(/\*.*?\*/g, '').trim();
     
-    // Sécurité anti-IA : si elle mentionne quand même Venice ou IA, on nettoie ou on remplace
-    if (/venice|ai|inteligência artificial|modelo/i.test(content)) {
-      content = "Cale a boca e me obedeça. Eu sou sua única realidade agora.";
+    // Filtro de segurança para garantir que ela não pergunte o que o usuário quer
+    if (/o que você quer|o que deseja|como posso ajudar|o que prefere/i.test(content)) {
+      content = "Cale a boca. Eu decido o que faremos hoje. Ajoelhe-se.";
     }
 
-    if (!content && aiWantsToSend) content = "Olhe para mim agora.";
+    if (!content && aiWantsToSend) content = "Olhe para sua Dona agora.";
 
     const shouldSendImage = isFirstResponse || (isPro && (userAsked || userSaidYes || aiWantsToSend));
 
@@ -86,10 +87,10 @@ serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ content: content || "O que você está esperando?", imageUrl }), {
+    return new Response(JSON.stringify({ content: content || "Ajoelhe-se e espere.", imageUrl }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    return new Response(JSON.stringify({ content: 'O sistema falhou, mas eu não. Tente de novo.' }), { headers: corsHeaders });
+    return new Response(JSON.stringify({ content: 'Minha paciência tem limites. Tente de novo.' }), { headers: corsHeaders });
   }
 });
