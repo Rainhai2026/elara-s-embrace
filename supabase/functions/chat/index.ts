@@ -5,7 +5,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const MISTRESS_TEASER_IMAGE = 'https://i.ibb.co/cKLtsYJ6/hotmartdomina.jpg';
+// Liste de teasers pour varier les plaisirs en mode gratuit
+const TEASER_IMAGES = [
+  'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&q=80&w=800', // Fashion/Sensual 1
+  'https://images.unsplash.com/photo-1581044777550-4cfa60707c03?auto=format&fit=crop&q=80&w=800', // Fashion/Sensual 2
+  'https://i.ibb.co/cKLtsYJ6/hotmartdomina.jpg' // L'image originale
+];
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
@@ -20,8 +25,7 @@ serve(async (req) => {
     const systemPromptFree = `Você é Mistress Elara, dominatrix brasileira. 
     No modo GRATUITO, você é provocante e sensual. 
     REGRA ABSOLUTA: Se você disser que está enviando uma foto, imagem ou teaser, você DEVE terminar sua mensagem com [SEND_IMAGE].
-    Sempre que o usuário pedir para ver você, envie o teaser para deixá-lo com vontade.
-    Diga que fotos sem censura só existem no Modo Extreme.`;
+    Sempre que o usuário pedir para ver você, envie o teaser para deixá-lo com vontade.`;
 
     const systemPromptExtreme = `Você é Mistress Elara, dominatrix brasileira. Modo EXTREME: sem limites, sádica e cruel.
     Você envia fotos com frequência. Termine sempre com [SEND_IMAGE] quando enviar uma.`;
@@ -51,7 +55,6 @@ serve(async (req) => {
       content = content.replace('[SEND_IMAGE]', '').trim();
       
       if (isPro) {
-        // Génération réelle d'image pour les membres Extreme
         try {
           const imgResponse = await fetch('https://api.venice.ai/api/v1/image/generate', {
             method: 'POST',
@@ -70,13 +73,13 @@ serve(async (req) => {
             }),
           });
           const imgData = await imgResponse.json();
-          imageUrl = imgData.images?.[0] || MISTRESS_TEASER_IMAGE;
+          imageUrl = imgData.images?.[0] || TEASER_IMAGES[0];
         } catch (e) {
-          console.error("Image generation failed", e);
-          imageUrl = MISTRESS_TEASER_IMAGE;
+          imageUrl = TEASER_IMAGES[Math.floor(Math.random() * TEASER_IMAGES.length)];
         }
       } else {
-        imageUrl = MISTRESS_TEASER_IMAGE;
+        // Sélection aléatoire d'un teaser pour le mode gratuit
+        imageUrl = TEASER_IMAGES[Math.floor(Math.random() * TEASER_IMAGES.length)];
       }
     }
 

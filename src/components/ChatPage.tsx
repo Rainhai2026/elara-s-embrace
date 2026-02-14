@@ -39,8 +39,8 @@ export function ChatPage() {
   const isPro = profile?.subscription_status === 'pro' || profile?.subscription_status === 'extreme';
 
   return (
-    <div className="flex flex-col h-screen max-w-2xl mx-auto">
-      <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-card/80 backdrop-blur">
+    <div className="flex flex-col h-screen max-w-2xl mx-auto bg-background">
+      <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-card/80 backdrop-blur z-20">
         <div className="flex items-center gap-3">
           <img src={MISTRESS_AVATAR} alt="Mistress Elara" className="w-10 h-10 rounded-full object-cover border border-primary/40" />
           <div>
@@ -74,22 +74,19 @@ export function ChatPage() {
         </div>
       </header>
 
-      <ScrollArea className="flex-1">
-        <div className="p-4 space-y-4">
+      <ScrollArea className="flex-1 relative">
+        {/* Fond d'écran plus subtil */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent pointer-events-none" />
+        
+        <div className="p-4 space-y-4 relative z-10">
           {messages.length === 0 && (
-            <div className="relative text-center py-12 space-y-3 overflow-hidden rounded-2xl">
-              <div
-                className="absolute inset-0 opacity-30 bg-cover bg-center"
-                style={{ backgroundImage: "url('https://i.ibb.co/cKLtsYJ6/hotmartdomina.jpg')" }}
-              />
-              <div className="relative z-10">
-                <div className="text-5xl">⛓️</div>
-                <h3 className="text-lg font-semibold text-foreground">Bem-vindo ao meu domínio</h3>
-                <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-                  *cruza as pernas lentamente, olhando você de cima a baixo* 
-                  <br />Então... o que traz você aqui, pet?
-                </p>
-              </div>
+            <div className="text-center py-12 space-y-3">
+              <div className="text-5xl mb-4">👠</div>
+              <h3 className="text-lg font-semibold text-foreground">Bem-vindo ao meu domínio</h3>
+              <p className="text-sm text-muted-foreground max-w-sm mx-auto italic">
+                *cruza as pernas lentamente, olhando você de cima a baixo* 
+                <br />"Então... o que traz você aqui, pet?"
+              </p>
             </div>
           )}
 
