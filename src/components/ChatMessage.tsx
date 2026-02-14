@@ -4,9 +4,10 @@ const MISTRESS_AVATAR = 'https://i.ibb.co/cKLtsYJ6/hotmartdomina.jpg';
 interface ChatMessageProps {
   role: 'user' | 'assistant';
   content: string;
+  imageUrl?: string;
 }
 
-export function ChatMessageBubble({ role, content }: ChatMessageProps) {
+export function ChatMessageBubble({ role, content, imageUrl }: ChatMessageProps) {
   const isUser = role === 'user';
 
   return (
@@ -21,6 +22,11 @@ export function ChatMessageBubble({ role, content }: ChatMessageProps) {
             : 'bg-card border border-border text-foreground rounded-bl-md'
         }`}
       >
+        {imageUrl && (
+          <div className="mb-3 overflow-hidden rounded-lg border border-border">
+            <img src={imageUrl} alt="Mistress Elara" className="w-full h-auto object-cover hover:scale-105 transition-transform duration-500" />
+          </div>
+        )}
         {isUser ? (
           <p>{content}</p>
         ) : (

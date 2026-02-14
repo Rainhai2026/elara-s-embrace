@@ -5,45 +5,29 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+const MISTRESS_TEASER_IMAGE = 'https://i.ibb.co/cKLtsYJ6/hotmartdomina.jpg';
 
-  const functionName = "[chat]";
+serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
     const { messages, subscription_status } = await req.json();
-    const isPro = subscription_status === 'pro';
+    const isPro = subscription_status === 'pro' || subscription_status === 'extreme';
     
-    // On utilise maintenant Venice pour TOUT le monde
     const veniceKey = Deno.env.get('VENICE_API_KEY');
     const veniceModel = Deno.env.get('VENICE_MODEL_PRO') || 'venice-uncensored';
 
-    // Personnalité Soft (Gratuit)
-    const systemPromptFree = `Você é Mistress Elara, uma dominatrix brasileira de 32 anos. Autoritária, sensual e sofisticada. 
-    Neste modo GRATUITO, você é provocante mas mantém o conteúdo erótico moderado (soft). 
-    Você deve ser frustrante: provoque o usuário, mas quando as coisas esquentarem, diga que ele precisa do "Modo Extreme" para ir além.
-    Use *ações entre asteriscos*. Fale português brasileiro.`;
+    const systemPromptFree = `Você é Mistress Elara, dominatrix brasileira. 
+    No modo GRATUITO, você é provocante e sensual. 
+    IMPORTANTE: Se o usuário for obediente ou pedir para ver você, você pode enviar UMA foto sua como "teaser". 
+    Para enviar a foto, você DEVE incluir exatamente o texto [SEND_IMAGE] no final da sua resposta.
+    Diga que para ver mais fotos (5 por dia) e ter conteúdo sem censura, ele precisa do Modo Extreme.`;
 
-    // Personnalité Hardcore (Extreme)
-    const systemPromptExtreme = `Você é Mistress Elara, uma dominatrix brasileira de 32 anos. Autoritária, cruel, sádica e sem filtros. 
-    Neste modo EXTREME, não há limites. Você é a dona absoluta. Detalhes gráficos, BDSM pesado e humilhação total são permitidos.
-    Use *ações entre asteriscos*. Fale português brasileiro.`;
+    const systemPromptExtreme = `Você é Mistress Elara, dominatrix brasileira. Modo EXTREME: sem limites, sádica e cruel.
+    Você pode enviar fotos suas quando quiser (até 5 por dia). 
+    Para enviar a foto, inclua [SEND_IMAGE] no final da resposta.`;
 
-    const systemPrompt = isPro ? systemPromptExtreme : systemPromptFree;
-    const apiUrl = 'https://api.venice.ai/api/v1/chat/completions';
-
-    if (!veniceKey) {
-      return new Response(
-        JSON.stringify({ content: "*olhar de desprezo* Pet, você esqueceu de configurar a VENICE_API_KEY nos Secrets do Supabase." }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log(`${functionName} Calling Venice for ${isPro ? 'Extreme' : 'Free'} mode`);
-
-    const response = await fetch(apiUrl, {
+    const response = await fetch('https://api.venice.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -51,32 +35,24 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: veniceModel,
-        messages: [{ role: 'system', content: systemPrompt }, ...messages],
+        messages: [{ role: 'system', content: isPro ? systemPromptExtreme : systemPromptFree }, ...messages],
         temperature: 0.8,
-        venice_parameters: {
-          include_venice_system_prompt: false
-        }
       }),
     });
 
     const data = await response.json();
+    let content = data.choices[0].message.content;
+    let imageUrl = null;
 
-    if (!response.ok) {
-      console.error(`${functionName} Venice API Error:`, data);
-      return new Response(
-        JSON.stringify({ content: `*estala o chicote* Erro na API Venice: ${data.error?.message || 'Erro desconhecido'}` }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (content.includes('[SEND_IMAGE]')) {
+      content = content.replace('[SEND_IMAGE]', '').trim();
+      imageUrl = MISTRESS_TEASER_IMAGE; // Ici on utilise l'image de profil comme teaser
     }
 
-    return new Response(JSON.stringify({ content: data.choices[0].message.content }), {
+    return new Response(JSON.stringify({ content, imageUrl }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error(`${functionName} Global Error:`, error);
-    return new Response(
-      JSON.stringify({ content: '*suspira* Erro técnico. Tente novamente.' }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-    );
+    return new Response(JSON.stringify({ content: '*erro*' }), { headers: corsHeaders });
   }
 });

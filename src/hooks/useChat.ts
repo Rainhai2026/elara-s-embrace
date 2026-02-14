@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  imageUrl?: string;
 }
 
 export function useChat() {
@@ -17,7 +18,6 @@ export function useChat() {
     setIsLoading(true);
 
     try {
-      // Utilisation de l'URL complète pour garantir la connexion
       const { data, error } = await supabase.functions.invoke('chat', {
         body: {
           messages: updatedMessages,
@@ -25,22 +25,20 @@ export function useChat() {
         },
       });
 
-      if (error) {
-        console.error('Supabase Function Error:', error);
-        throw error;
-      }
+      if (error) throw error;
 
       const assistantMessage: ChatMessage = {
         role: 'assistant',
         content: data.content,
+        imageUrl: data.imageUrl,
       };
 
       setMessages(prev => [...prev, assistantMessage]);
     } catch (err) {
-      console.error('Chat error details:', err);
+      console.error('Chat error:', err);
       setMessages(prev => [
         ...prev,
-        { role: 'assistant', content: '*suspira irritada* Algo deu errado na minha conexão, pet. Verifique se as chaves de API estão configuradas no Supabase.' },
+        { role: 'assistant', content: '*suspira* Algo deu errado, pet. Tente novamente.' },
       ]);
     } finally {
       setIsLoading(false);
