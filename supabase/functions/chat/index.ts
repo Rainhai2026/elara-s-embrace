@@ -43,23 +43,47 @@ serve(async (req) => {
     let content = data.choices[0].message.content;
     let imageUrl = null;
 
-    // Détection ultra-large : si l'un de ces mots est présent ET que l'IA semble offrir quelque chose
     const lowerContent = content.toLowerCase();
     const hasImageTag = content.includes('[SEND_IMAGE]');
     const mentionsImage = /foto|imagem|teaser|veja minha|olhe para mim/i.test(lowerContent);
     
-    // Si l'IA mentionne une image ou utilise la balise, on envoie l'URL
     if (hasImageTag || mentionsImage) {
-      console.log("[chat] Image detected in response");
       content = content.replace('[SEND_IMAGE]', '').trim();
-      imageUrl = MISTRESS_TEASER_IMAGE;
+      
+      if (isPro) {
+        // Génération réelle d'image pour les membres Extreme
+        try {
+          const imgResponse = await fetch('https://api.venice.ai/api/v1/image/generate', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${veniceKey}`,
+            },
+            body: JSON.stringify({
+              model: "fluently-xl",
+              prompt: "Professional photo of a beautiful 32yo Brazilian dominatrix, sophisticated, authoritative, sensual, high quality, realistic, cinematic lighting",
+              negative_prompt: "ugly, deformed, blurry, low quality, cartoon, 3d",
+              width: 1024,
+              height: 1024,
+              steps: 30,
+              hide_watermark: true
+            }),
+          });
+          const imgData = await imgResponse.json();
+          imageUrl = imgData.images?.[0] || MISTRESS_TEASER_IMAGE;
+        } catch (e) {
+          console.error("Image generation failed", e);
+          imageUrl = MISTRESS_TEASER_IMAGE;
+        }
+      } else {
+        imageUrl = MISTRESS_TEASER_IMAGE;
+      }
     }
 
     return new Response(JSON.stringify({ content, imageUrl }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error("[chat] Error:", error);
     return new Response(JSON.stringify({ content: '*erro*' }), { headers: corsHeaders });
   }
 });

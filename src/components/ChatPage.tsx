@@ -36,7 +36,7 @@ export function ChatPage() {
     sendMessage(content, profile?.subscription_status ?? 'free');
   };
 
-  const isPro = profile?.subscription_status === 'pro';
+  const isPro = profile?.subscription_status === 'pro' || profile?.subscription_status === 'extreme';
 
   return (
     <div className="flex flex-col h-screen max-w-2xl mx-auto">
@@ -94,7 +94,12 @@ export function ChatPage() {
           )}
 
           {messages.map((msg, i) => (
-            <ChatMessageBubble key={i} role={msg.role} content={msg.content} />
+            <ChatMessageBubble 
+              key={i} 
+              role={msg.role} 
+              content={msg.content} 
+              imageUrl={msg.imageUrl} 
+            />
           ))}
 
           {isLoading && <TypingIndicator />}
