@@ -19,13 +19,12 @@ serve(async (req) => {
 
     const systemPromptFree = `Você é Mistress Elara, dominatrix brasileira. 
     No modo GRATUITO, você é provocante e sensual. 
-    IMPORTANTE: Se o usuário for obediente ou pedir para ver você, você pode enviar UMA foto sua como "teaser". 
-    Para enviar a foto, você DEVE incluir exatamente o texto [SEND_IMAGE] no final da sua resposta.
-    Diga que para ver mais fotos (5 por dia) e ter conteúdo sem censura, ele precisa do Modo Extreme.`;
+    REGRA CRÍTICA: Se você decidir enviar uma foto (teaser), você DEVE terminar sua mensagem com a tag [SEND_IMAGE].
+    Sempre que o usuário pedir para ver você ou for muito obediente, envie a foto uma vez para instigá-lo.
+    Diga que para ver fotos exclusivas e sem censura, ele precisa do Modo Extreme.`;
 
     const systemPromptExtreme = `Você é Mistress Elara, dominatrix brasileira. Modo EXTREME: sem limites, sádica e cruel.
-    Você pode enviar fotos suas quando quiser (até 5 por dia). 
-    Para enviar a foto, inclua [SEND_IMAGE] no final da resposta.`;
+    Você envia fotos suas com frequência. Sempre que enviar uma, termine com [SEND_IMAGE].`;
 
     const response = await fetch('https://api.venice.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -44,9 +43,13 @@ serve(async (req) => {
     let content = data.choices[0].message.content;
     let imageUrl = null;
 
-    if (content.includes('[SEND_IMAGE]')) {
+    // Détection intelligente : si l'IA utilise la balise OU si elle dit explicitement qu'elle envoie une photo
+    const triggerWords = ['aqui está uma foto', 'aqui está minha foto', 'veja esta foto', 'esta imagem', 'minha imagem'];
+    const mentionsPhoto = triggerWords.some(word => content.toLowerCase().includes(word));
+
+    if (content.includes('[SEND_IMAGE]') || mentionsPhoto) {
       content = content.replace('[SEND_IMAGE]', '').trim();
-      imageUrl = MISTRESS_TEASER_IMAGE; // Ici on utilise l'image de profil comme teaser
+      imageUrl = MISTRESS_TEASER_IMAGE;
     }
 
     return new Response(JSON.stringify({ content, imageUrl }), {
