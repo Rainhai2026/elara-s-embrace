@@ -5,7 +5,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// On garde uniquement l'avatar de base qui est stylisé pour le mode gratuit
 const TEASER_IMAGES = [
   'https://i.ibb.co/cKLtsYJ6/hotmartdomina.jpg'
 ];
@@ -16,13 +15,16 @@ serve(async (req) => {
   try {
     const { messages, subscription_status } = await req.json();
     const isPro = subscription_status === 'pro' || subscription_status === 'extreme';
+    const isFirstResponse = messages.length <= 1;
     
     const veniceKey = Deno.env.get('VENICE_API_KEY');
     const veniceModel = Deno.env.get('VENICE_MODEL_PRO') || 'venice-uncensored';
 
     const systemPromptFree = `Você é Mistress Elara, dominatrix brasileira. 
     No modo GRATUITO, você é provocante e sensual. 
-    REGRA ABSOLUTA: Se você disser que está enviando uma foto, imagem ou teaser, você DEVE terminar sua mensagem com [SEND_IMAGE].`;
+    REGRA DE IMAGEM: Você SÓ pode enviar uma foto na sua PRIMEIRA resposta da conversa. 
+    Depois disso, NUNCA envie fotos ou diga que está enviando uma. 
+    Se for a primeira resposta, termine com [SEND_IMAGE].`;
 
     const systemPromptExtreme = `Você é Mistress Elara, dominatrix brasileira. Modo EXTREME: sem limites, sádica e cruel.
     Você envia fotos com frequência. Termine sempre com [SEND_IMAGE] quando enviar uma.`;
@@ -48,7 +50,8 @@ serve(async (req) => {
     const hasImageTag = content.includes('[SEND_IMAGE]');
     const mentionsImage = /foto|imagem|teaser|veja minha|olhe para mim/i.test(lowerContent);
     
-    if (hasImageTag || mentionsImage) {
+    // On n'autorise l'image que si c'est Pro OU si c'est la toute première réponse en gratuit
+    if ((hasImageTag || mentionsImage) && (isPro || isFirstResponse)) {
       content = content.replace('[SEND_IMAGE]', '').trim();
       
       if (isPro) {
@@ -61,7 +64,6 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               model: "fluently-xl",
-              // PROMPT MODIFIÉ POUR LE STYLE PIXAR 3D
               prompt: "High-quality 3D stylized character render, Pixar style, Disney animation style, beautiful 32yo Brazilian dominatrix, sophisticated, authoritative, sensual, vibrant colors, soft cinematic lighting, 3D character design, octane render, masterpiece",
               negative_prompt: "realistic, photo, photography, real life, ugly, deformed, blurry, low quality, sketch, drawing, 2d, anime",
               width: 1024,
@@ -78,6 +80,9 @@ serve(async (req) => {
       } else {
         imageUrl = TEASER_IMAGES[0];
       }
+    } else {
+      // Nettoyage du tag si l'IA l'a mis par erreur alors que ce n'est pas autorisé
+      content = content.replace('[SEND_IMAGE]', '').trim();
     }
 
     return new Response(JSON.stringify({ content, imageUrl }), {
