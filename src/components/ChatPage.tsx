@@ -14,8 +14,8 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
 const MISTRESS_AVATAR = 'https://i.ibb.co/cKLtsYJ6/hotmartdomina.jpg';
-// Substitua este link pelo seu vídeo real
-const UPGRADE_VIDEO_URL = 'https://www.w3schools.com/html/mov_bbb.mp4'; 
+// Link do vídeo fornecido pelo usuário
+const UPGRADE_VIDEO_URL = 'https://res.cloudinary.com/dpux2fgtc/video/upload/v1771109230/grok-video-97563f7a-b928-4934-8f74-97c934897467_1_k6qojg.mp4'; 
 
 export function ChatPage() {
   const navigate = useNavigate();
