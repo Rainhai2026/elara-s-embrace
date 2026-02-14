@@ -15,10 +15,10 @@ serve(async (req) => {
     const { messages, subscription_status, message_count } = await req.json();
     const isPro = subscription_status === 'pro' || subscription_status === 'extreme';
     
-    // Primeira resposta do chat (quando só tem a mensagem do usuário)
+    // Primeira resposta do chat
     const isFirstResponse = messages.length <= 1;
     
-    // Milestone de 10 mensagens
+    // Automação: 1 foto a cada 10 mensagens (10, 20, 30...)
     const isMilestone = message_count > 0 && message_count % 10 === 0;
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -59,22 +59,26 @@ serve(async (req) => {
 
     const lastUserMsg = messages[messages.length - 1]?.content || "";
     
-    // Gatilhos para fotos
+    // Gatilhos manuais (apenas para modo Extreme)
     const userAsked = /me manda uma foto|quero te ver|mostra uma foto|envia uma foto|send me a photo/i.test(lastUserMsg);
     const aiExplicitlyWants = content.includes('[SEND_IMAGE]');
 
-    // Limpa o conteúdo de tags e asteriscos
+    // Limpa o conteúdo
     content = content.replace(/\[SEND_IMAGE\]/g, '').replace(/\*.*?\*/g, '').trim();
 
     if (isFirstResponse) {
-      // Primeira foto é sempre a de apresentação
+      // 1. Sempre envia a foto de apresentação na primeira mensagem
       imageUrl = PRESENTATION_IMAGE;
-    } else if (isMilestone || (isPro && (userAsked || aiExplicitlyWants))) {
-      // Outras fotos vêm da galeria
-      const { data: dbImages } = await supabase
-        .from('gallery_images')
-        .select('url');
-      
+    } else if (isMilestone) {
+      // 2. Automação garantida a cada 10 mensagens (Gratuito e Extreme)
+      const { data: dbImages } = await supabase.from('gallery_images').select('url');
+      if (dbImages && dbImages.length > 0) {
+        const randomIndex = Math.floor(Math.random() * dbImages.length);
+        imageUrl = dbImages[randomIndex].url;
+      }
+    } else if (isPro && (userAsked || aiExplicitlyWants)) {
+      // 3. Fotos extras sob demanda (Apenas no modo Extreme)
+      const { data: dbImages } = await supabase.from('gallery_images').select('url');
       if (dbImages && dbImages.length > 0) {
         const randomIndex = Math.floor(Math.random() * dbImages.length);
         imageUrl = dbImages[randomIndex].url;
