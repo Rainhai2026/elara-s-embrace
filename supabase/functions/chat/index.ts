@@ -35,7 +35,8 @@ serve(async (req) => {
 
     const systemPromptExtreme = `Você é Mistress Elara, dominatrix brasileira em estilo Pixar 3D. Modo EXTREME: sem limites, sádica e cruel.
     Você envia fotos sempre que o usuário pedir ou a cena exigir. 
-    REGRA CRÍTICA: Sempre que você for mostrar algo, enviar uma foto ou dar uma "visão" ao pet, você DEVE terminar sua mensagem com a tag [SEND_IMAGE]. Sem essa tag, o pet não consegue ver nada e fica triste.`;
+    REGRA CRÍTICA: Para enviar uma foto, você DEVE terminar sua mensagem com a tag [SEND_IMAGE]. 
+    AVISO: NUNCA descreva a foto por escrito (ex: [Visão Detalhada...]). Apenas use a tag. Se você descrever por escrito, o pet ficará confuso.`;
 
     const response = await fetch('https://api.venice.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -54,16 +55,22 @@ serve(async (req) => {
     let content = data.choices[0]?.message?.content || "Desculpe, pet.";
     let imageUrl = null;
 
-    // Détection ultra-large de l'intention d'envoyer une image
+    // Nettoyage des descriptions textuelles que l'IA pourrait essayer d'afficher
+    const descriptionRegex = /\[Visão Detalhada:.*?\]|\[Visão:.*?\]|\[Descrição:.*?\]/gi;
+    const hasDescription = descriptionRegex.test(content);
+    if (hasDescription) {
+      content = content.replace(descriptionRegex, '').trim();
+    }
+
     const hasImageTag = content.includes('[SEND_IMAGE]');
     const mentionsVisual = /foto|imagem|olha|veja|vê|visão|mostr|aqui está|prepara/i.test(content);
     
-    // Vérifier si l'utilisateur a demandé une photo dans son dernier message
     const lastUserMsg = messages[messages.length - 1]?.content || "";
     const userAsked = /foto|imagem|mostra|ver/i.test(lastUserMsg);
     const aiAgreed = /claro|com certeza|agora|vou|toma/i.test(content);
 
-    const shouldSendImage = hasImageTag || (isFirstResponse) || (isPro && (mentionsVisual || (userAsked && aiAgreed)));
+    // On force l'image si l'IA a mis la balise, si c'est le début, ou si elle a "halluciné" une description textuelle
+    const shouldSendImage = hasImageTag || isFirstResponse || (isPro && (mentionsVisual || hasDescription || (userAsked && aiAgreed)));
     
     if (shouldSendImage) {
       content = content.replace('[SEND_IMAGE]', '').trim();
@@ -91,7 +98,7 @@ serve(async (req) => {
           const imgData = await imgResponse.json();
           imageUrl = imgData.images?.[0];
         } catch (e) {
-          console.error("Image generation error", e);
+          console.error("[chat] Image generation error", e);
         }
       } else if (isFirstResponse) {
         imageUrl = INITIAL_WELCOME_IMAGE;
