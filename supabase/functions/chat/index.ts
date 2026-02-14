@@ -7,7 +7,9 @@ const corsHeaders = {
 
 const TEASER_IMAGES = [
   'https://i.ibb.co/cKLtsYJ6/hotmartdomina.jpg',
-  'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?q=80&w=1000&auto=format&fit=crop'
+  'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?q=80&w=1000&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1509248961158-e54f6934749c?q=80&w=1000&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1552053831-71594a27632d?q=80&w=1000&auto=format&fit=crop'
 ];
 
 const STYLES = [
@@ -27,8 +29,14 @@ serve(async (req) => {
     const isPro = subscription_status === 'pro' || subscription_status === 'extreme';
     const isFirstResponse = messages.length <= 1;
     
+    console.log("[chat] Request received", { isPro, subscription_status, messageCount: messages.length });
+
     const veniceKey = Deno.env.get('VENICE_API_KEY');
     const veniceModel = Deno.env.get('VENICE_MODEL_PRO') || 'venice-uncensored';
+
+    if (!veniceKey) {
+      console.error("[chat] VENICE_API_KEY is missing");
+    }
 
     const systemPromptFree = `Você é Mistress Elara, dominatrix brasileira. 
     No modo GRATUITO, você é provocante e sensual. 
@@ -53,17 +61,19 @@ serve(async (req) => {
     });
 
     const data = await response.json();
-    let content = data.choices[0].message.content;
+    let content = data.choices[0]?.message?.content || "Desculpe, pet. Estou sem palavras.";
     let imageUrl = null;
 
     const hasImageTag = content.includes('[SEND_IMAGE]');
+    console.log("[chat] AI Response generated", { hasImageTag, isPro, isFirstResponse });
     
     if (hasImageTag && (isPro || isFirstResponse)) {
       content = content.replace('[SEND_IMAGE]', '').trim();
       
-      if (isPro) {
+      if (isPro && veniceKey) {
         try {
           const randomStyle = STYLES[Math.floor(Math.random() * STYLES.length)];
+          console.log("[chat] Attempting to generate image with style:", randomStyle);
           
           const imgResponse = await fetch('https://api.venice.ai/api/v1/image/generate', {
             method: 'POST',
@@ -73,18 +83,33 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               model: "fluently-xl",
-              prompt: `Photorealistic, high-quality 8k portrait of a beautiful 32yo Brazilian dominatrix, ${randomStyle}, sophisticated, authoritative, sensual, cinematic lighting, detailed skin texture, professional photography, masterpiece`,
-              negative_prompt: "cartoon, 3d, render, pixar, anime, drawing, painting, digital art, ugly, deformed, blurry, low quality, duplicate, watermark",
+              prompt: `Photorealistic, high-quality 8k portrait of a beautiful 32yo Brazilian woman, ${randomStyle}, sophisticated, authoritative, sensual, cinematic lighting, detailed skin texture, professional photography, masterpiece`,
+              negative_prompt: "cartoon, 3d, render, pixar, anime, drawing, painting, digital art, ugly, deformed, blurry, low quality, duplicate, watermark, text, signature",
               width: 1024,
               height: 1024,
-              steps: 35,
+              steps: 30,
               hide_watermark: true
             }),
           });
+
+          if (!imgResponse.ok) {
+            const errorText = await imgResponse.text();
+            console.error("[chat] Image generation API error:", errorText);
+            throw new Error("Image generation failed");
+          }
+
           const imgData = await imgResponse.json();
-          imageUrl = imgData.images?.[0] || TEASER_IMAGES[0];
+          imageUrl = imgData.images?.[0];
+          
+          if (imageUrl) {
+            console.log("[chat] Image generated successfully");
+          } else {
+            console.warn("[chat] No image URL in API response");
+            imageUrl = TEASER_IMAGES[Math.floor(Math.random() * TEASER_IMAGES.length)];
+          }
         } catch (e) {
-          imageUrl = TEASER_IMAGES[0];
+          console.error("[chat] Image generation exception:", e);
+          imageUrl = TEASER_IMAGES[Math.floor(Math.random() * TEASER_IMAGES.length)];
         }
       } else {
         imageUrl = TEASER_IMAGES[0];
@@ -97,6 +122,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    return new Response(JSON.stringify({ content: '*erro*' }), { headers: corsHeaders });
+    console.error("[chat] Global error:", error);
+    return new Response(JSON.stringify({ content: '*suspira* Algo deu errado, pet. Tente novamente.' }), { headers: corsHeaders });
   }
 });
