@@ -1,4 +1,10 @@
 import ReactMarkdown from 'react-markdown';
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+
 const MISTRESS_AVATAR = 'https://i.ibb.co/cKLtsYJ6/hotmartdomina.jpg';
 
 interface ChatMessageProps {
@@ -22,13 +28,24 @@ export function ChatMessageBubble({ role, content, imageUrl }: ChatMessageProps)
       
       <div className={`flex flex-col gap-1 max-w-[85%] ${isUser ? 'items-end' : 'items-start'}`}>
         {imageUrl && (
-          <div className="overflow-hidden rounded-2xl border border-border/50 shadow-sm mb-1 max-w-[280px]">
-            <img 
-              src={imageUrl} 
-              alt="Mistress Elara" 
-              className="w-full h-auto object-cover" 
-            />
-          </div>
+          <Dialog>
+            <DialogTrigger asChild>
+              <div className="overflow-hidden rounded-2xl border border-border/50 shadow-sm mb-1 max-w-[280px] cursor-zoom-in hover:opacity-90 transition-opacity">
+                <img 
+                  src={imageUrl} 
+                  alt="Mistress Elara" 
+                  className="w-full h-auto object-cover" 
+                />
+              </div>
+            </DialogTrigger>
+            <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 border-none bg-transparent shadow-none flex items-center justify-center">
+              <img 
+                src={imageUrl} 
+                alt="Mistress Elara Ampliada" 
+                className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+              />
+            </DialogContent>
+          </Dialog>
         )}
         
         <div
