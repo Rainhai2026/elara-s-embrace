@@ -30,7 +30,7 @@ serve(async (req) => {
     REGRAS:
     1. Respostas CURTAS. APENAS FALA.
     2. NUNCA use asteriscos ou descrições.
-    3. Se o usuário pedir para ver algo, ou se você oferecer, use obrigatoriamente o tag [SEND_IMAGE] no final da sua fala.
+    3. Se você for mostrar algo ou enviar uma foto, use [SEND_IMAGE] no final.
     4. ${isPro ? 'Modo EXTREME: Sem limites, cruel.' : 'Modo GRATUITO: Provocante.'}`;
 
     const response = await fetch('https://api.venice.ai/api/v1/chat/completions', {
@@ -50,23 +50,20 @@ serve(async (req) => {
     let content = data.choices[0]?.message?.content || "";
     let imageUrl = null;
 
-    // Détection améliorée de la demande de photo
+    // Détection ultra-sensible
     const lastUserMsg = messages[messages.length - 1]?.content || "";
     const prevAiMsg = messages.length >= 2 ? messages[messages.length - 2]?.content : "";
     
-    const userAskedExplicitly = /foto|imagem|mostra|ver|pic|olha|photo|image/i.test(lastUserMsg);
-    const userSaidYesToOffer = /sim|quero|ok|yes|com certeza|claro/i.test(lastUserMsg) && /ver|mostrar|foto|imagem/i.test(prevAiMsg);
-    const aiWantsToSend = content.includes('[SEND_IMAGE]');
+    const userAsked = /foto|imagem|mostra|ver|pic|olha|photo|image/i.test(lastUserMsg);
+    const userSaidYes = /sim|quero|ok|yes|claro|com certeza/i.test(lastUserMsg) && /ver|mostrar|foto|imagem|quer/i.test(prevAiMsg);
+    const aiWantsToSend = content.includes('[SEND_IMAGE]') || /olhe|veja|mostro|aqui está/i.test(content);
 
-    // Nettoyage du contenu
+    // Nettoyage
     content = content.replace(/\[SEND_IMAGE\]/g, '').replace(/\*.*?\*/g, '').trim();
     
-    // Sécurité : ne jamais envoyer une bulle vide
-    if (!content && aiWantsToSend) {
-      content = "Olhe bem para mim, escravo.";
-    }
+    if (!content && aiWantsToSend) content = "Olhe para mim.";
 
-    const shouldSendImage = isFirstResponse || (isPro && (userAskedExplicitly || userSaidYesToOffer || aiWantsToSend));
+    const shouldSendImage = isFirstResponse || (isPro && (userAsked || userSaidYes || aiWantsToSend));
 
     if (shouldSendImage && veniceKey) {
       try {
@@ -82,7 +79,7 @@ serve(async (req) => {
           body: JSON.stringify({
             model: "fluently-xl",
             prompt: `High-quality 3D render, Pixar style, Disney animation style, a beautiful 32yo Brazilian woman, stylized character, black leather and latex outfit, ${randomStyle}, masterpiece, cinematic lighting, seed ${seed}`,
-            negative_prompt: "photorealistic, real life, photography, human, ugly, deformed, blurry, low quality",
+            negative_prompt: "photorealistic, real life, photography, human, ugly, deformed, blurry, low quality, real person",
             width: 1024,
             height: 1024,
             steps: 25
@@ -90,6 +87,7 @@ serve(async (req) => {
         });
 
         const imgData = await imgResponse.json();
+        // Venice peut renvoyer l'image dans différents formats selon la config
         let rawImage = imgData.images?.[0] || imgData.data?.[0]?.url || imgData.data?.[0]?.b64_json;
 
         if (rawImage) {
@@ -106,6 +104,6 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    return new Response(JSON.stringify({ content: 'Erro no sistema, pet.' }), { headers: corsHeaders });
+    return new Response(JSON.stringify({ content: 'Erro no sistema.' }), { headers: corsHeaders });
   }
 });
