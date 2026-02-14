@@ -5,24 +5,18 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// L'image de bienvenue (utilisée UNIQUEMENT pour le tout premier message gratuit)
+// Image de bienvenue (Pixar style)
 const INITIAL_WELCOME_IMAGE = 'https://i.ibb.co/cKLtsYJ6/hotmartdomina.jpg';
 
-// Images de secours pour le mode Extreme (différentes de l'image de départ)
-const EXTREME_FALLBACK_IMAGES = [
-  'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?q=80&w=1000&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1509248961158-e54f6934749c?q=80&w=1000&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1552053831-71594a27632d?q=80&w=1000&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=1000&auto=format&fit=crop'
-];
-
+// Styles spécifiques Pixar 3D avec accessoires
 const STYLES = [
-  "wearing a black latex bodysuit, sitting on a velvet throne, dark studio background",
-  "wearing a sophisticated leather corset, holding a leather whip, intense gaze",
-  "in a luxury penthouse office, wearing professional but sensual attire, looking authoritative",
-  "standing in a dimly lit dungeon with chains, mysterious and dominant atmosphere",
-  "extreme close up portrait, red lipstick, detailed skin texture, sharp focus",
-  "wearing high heels and stockings, elegant dominant pose, cinematic rim lighting"
+  "holding a black leather whip, standing in a dominant pose, Pixar 3D style",
+  "holding a riding crop (cravache), sitting on a dark throne, Disney animation style",
+  "with silver handcuffs hanging from her belt, leaning forward provocatively, 3D render",
+  "holding a heavy metal chain, dark dungeon background, stylized 3D character",
+  "adjusting a leather dog collar, looking down with authority, high-quality 3D animation",
+  "wearing a black leather corset and belt, holding a paddle, octane render style",
+  "standing with arms crossed, whip in hand, cinematic lighting, 3D animated movie style"
 ];
 
 serve(async (req) => {
@@ -36,14 +30,14 @@ serve(async (req) => {
     const veniceKey = Deno.env.get('VENICE_API_KEY');
     const veniceModel = Deno.env.get('VENICE_MODEL_PRO') || 'venice-uncensored';
 
-    const systemPromptFree = `Você é Mistress Elara, dominatrix brasileira. 
+    const systemPromptFree = `Você é Mistress Elara, dominatrix brasileira em estilo Pixar 3D. 
     No modo GRATUITO, você é provocante e sensual. 
     REGRA DE IMAGEM: Você SÓ pode enviar uma foto na sua PRIMEIRA resposta da conversa. 
     Depois disso, NUNCA envie fotos. Se for a primeira resposta, termine com [SEND_IMAGE].`;
 
-    const systemPromptExtreme = `Você é Mistress Elara, dominatrix brasileira. Modo EXTREME: sem limites, sádica e cruel.
+    const systemPromptExtreme = `Você é Mistress Elara, dominatrix brasileira em estilo Pixar 3D. Modo EXTREME: sem limites, sádica e cruel.
     Você envia fotos quando a cena pedir. Varie suas respostas.
-    Para enviar uma foto, termine sua message com o tag [SEND_IMAGE].`;
+    Para enviar uma foto, termine sua mensagem com o tag [SEND_IMAGE].`;
 
     const response = await fetch('https://api.venice.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -68,7 +62,6 @@ serve(async (req) => {
       content = content.replace('[SEND_IMAGE]', '').trim();
       
       if (isPro && veniceKey) {
-        // MODE EXTREME : On tente de générer une nouvelle image unique
         try {
           const randomStyle = STYLES[Math.floor(Math.random() * STYLES.length)];
           const imgResponse = await fetch('https://api.venice.ai/api/v1/image/generate', {
@@ -79,8 +72,8 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               model: "fluently-xl",
-              prompt: `Photorealistic, high-quality 8k portrait of a beautiful 32yo Brazilian woman, ${randomStyle}, sophisticated, authoritative, sensual, cinematic lighting, detailed skin texture, professional photography, masterpiece`,
-              negative_prompt: "cartoon, 3d, render, pixar, anime, drawing, painting, digital art, ugly, deformed, blurry, low quality, duplicate, watermark, text, signature",
+              prompt: `High-quality 3D render, Pixar style, Disney animation style, a beautiful 32yo Brazilian dominatrix woman, black leather outfit, ${randomStyle}, big expressive eyes, stylized features, cinematic lighting, 8k, masterpiece, unreal engine 5`,
+              negative_prompt: "photorealistic, real life, photography, human, grainy, blurry, low quality, deformed, ugly, real person, 2d, drawing, sketch",
               width: 1024,
               height: 1024,
               steps: 30,
@@ -89,13 +82,11 @@ serve(async (req) => {
           });
 
           const imgData = await imgResponse.json();
-          imageUrl = imgData.images?.[0] || EXTREME_FALLBACK_IMAGES[Math.floor(Math.random() * EXTREME_FALLBACK_IMAGES.length)];
+          imageUrl = imgData.images?.[0];
         } catch (e) {
-          // En cas d'erreur, on prend une image de secours qui n'est PAS l'image de départ
-          imageUrl = EXTREME_FALLBACK_IMAGES[Math.floor(Math.random() * EXTREME_FALLBACK_IMAGES.length)];
+          imageUrl = null; // Pas de fallback sur des images réelles
         }
       } else if (isFirstResponse) {
-        // MODE GRATUIT : Uniquement pour le premier message
         imageUrl = INITIAL_WELCOME_IMAGE;
       }
     } else {
