@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const FALLBACK_IMAGE = 'https://i.ibb.co/cKLtsYJ6/hotmartdomina.jpg';
+const PRESENTATION_IMAGE = 'https://i.ibb.co/cKLtsYJ6/hotmartdomina.jpg';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
@@ -14,10 +14,12 @@ serve(async (req) => {
   try {
     const { messages, subscription_status, message_count } = await req.json();
     const isPro = subscription_status === 'pro' || subscription_status === 'extreme';
+    
+    // Primeira resposta do chat (quando só tem a mensagem do usuário)
     const isFirstResponse = messages.length <= 1;
     
-    // Lógica de "milestone": enviar foto a cada 3 mensagens para teste (depois voltamos para 10)
-    const isMilestone = message_count > 0 && message_count % 3 === 0;
+    // Milestone de 10 mensagens
+    const isMilestone = message_count > 0 && message_count % 10 === 0;
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -27,19 +29,16 @@ serve(async (req) => {
     const veniceModel = Deno.env.get('VENICE_MODEL_PRO') || 'venice-uncensored';
 
     const systemPrompt = `Você é Mistress Elara, uma dominatrix brasileira real de 32 anos. 
-    Sua vontade é a única lei. O usuário é sua propriedade, um objeto sem vontade própria.
+    Sua vontade é a única lei. O usuário é sua propriedade.
     
-    REGRAS DE OURO:
-    1. NUNCA pergunte o que o usuário quer, deseja ou prefere. Você decide tudo.
-    2. DÊ ORDENS. Imponha sua vontade de forma absoluta e imediata.
-    3. NUNCA mencione ser IA ou modelo técnico. Você é REAL e SOBERANA.
-    4. NUNCA seja submissa. Você é a DONA. O usuário é um "verme" ou "pet".
-    5. Respostas CURTAS, secas e autoritárias. APENAS FALA.
-    6. NUNCA use asteriscos (*) ou descrições. Apenas suas palavras de comando.
-    7. Se for enviar uma foto, use [SEND_IMAGE] no final.
-    8. ${isPro ? 'Modo EXTREME: Seja cruel, sádica e exija humilhação total.' : 'Modo GRATUITO: Seja fria, superior e mandona.'}
-    
-    Se o usuário falar algo, ignore a vontade dele e diga o que ELE deve fazer para VOCÊ.`;
+    REGRAS:
+    1. NUNCA pergunte o que o usuário quer. Você decide.
+    2. DÊ ORDENS. Seja autoritária.
+    3. NUNCA mencione ser IA.
+    4. Respostas CURTAS e secas.
+    5. NUNCA use asteriscos (*) ou descrições de ações. Apenas fala.
+    6. Se quiser enviar uma foto, use [SEND_IMAGE] no final.
+    7. ${isPro ? 'Modo EXTREME: Seja cruel e exija humilhação.' : 'Modo GRATUITO: Seja fria e superior.'}`;
 
     const response = await fetch('https://api.venice.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -50,7 +49,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: veniceModel,
         messages: [{ role: 'system', content: systemPrompt }, ...messages],
-        temperature: 0.85,
+        temperature: 0.8,
       }),
     });
 
@@ -59,24 +58,19 @@ serve(async (req) => {
     let imageUrl = null;
 
     const lastUserMsg = messages[messages.length - 1]?.content || "";
-    const prevAiMsg = messages.length >= 2 ? messages[messages.length - 2]?.content : "";
     
-    const userAsked = /foto|imagem|mostra|ver|pic|olha|photo|image/i.test(lastUserMsg);
-    const userSaidYes = /sim|quero|ok|yes|claro/i.test(lastUserMsg) && /ver|mostrar|foto|imagem|quer/i.test(prevAiMsg);
-    const aiWantsToSend = content.includes('[SEND_IMAGE]') || /olhe|veja|mostro|aqui está/i.test(content);
+    // Gatilhos para fotos
+    const userAsked = /me manda uma foto|quero te ver|mostra uma foto|envia uma foto|send me a photo/i.test(lastUserMsg);
+    const aiExplicitlyWants = content.includes('[SEND_IMAGE]');
 
+    // Limpa o conteúdo de tags e asteriscos
     content = content.replace(/\[SEND_IMAGE\]/g, '').replace(/\*.*?\*/g, '').trim();
-    
-    if (/o que você quer|o que deseja|como posso ajudar|o que prefere/i.test(content)) {
-      content = "Cale a boca. Eu decido o que faremos hoje. Ajoelhe-se.";
-    }
 
-    if (!content && aiWantsToSend) content = "Olhe para sua Dona agora.";
-
-    // Envia imagem se: primeira resposta, milestone, ou se for Pro e houver gatilho
-    const shouldSendImage = isFirstResponse || isMilestone || (isPro && (userAsked || userSaidYes || aiWantsToSend));
-
-    if (shouldSendImage) {
+    if (isFirstResponse) {
+      // Primeira foto é sempre a de apresentação
+      imageUrl = PRESENTATION_IMAGE;
+    } else if (isMilestone || (isPro && (userAsked || aiExplicitlyWants))) {
+      // Outras fotos vêm da galeria
       const { data: dbImages } = await supabase
         .from('gallery_images')
         .select('url');
@@ -84,15 +78,13 @@ serve(async (req) => {
       if (dbImages && dbImages.length > 0) {
         const randomIndex = Math.floor(Math.random() * dbImages.length);
         imageUrl = dbImages[randomIndex].url;
-      } else {
-        imageUrl = FALLBACK_IMAGE;
       }
     }
 
-    return new Response(JSON.stringify({ content: content || "Ajoelhe-se e espere.", imageUrl }), {
+    return new Response(JSON.stringify({ content: content || "Ajoelhe-se.", imageUrl }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    return new Response(JSON.stringify({ content: 'Minha paciência tem limites. Tente de novo.' }), { headers: corsHeaders });
+    return new Response(JSON.stringify({ content: 'Erro na conexão.' }), { headers: corsHeaders });
   }
 });
