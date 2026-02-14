@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
@@ -8,8 +8,9 @@ import { ChatInput } from '@/components/ChatInput';
 import { TypingIndicator } from '@/components/TypingIndicator';
 import { PaywallBanner } from '@/components/PaywallBanner';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Crown, Sparkles, Trash2, RefreshCcw, Zap, Image as ImageIcon } from 'lucide-react';
+import { Crown, Sparkles, Trash2, RefreshCcw, Zap, Image as ImageIcon, Timer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 const MISTRESS_AVATAR = 'https://i.ibb.co/cKLtsYJ6/hotmartdomina.jpg';
 
@@ -19,6 +20,10 @@ export function ChatPage() {
   const { profile, incrementMessageCount, resetCounts, toggleExtreme, canSendMessage, remainingMessages } = useProfile(user?.id);
   const { messages, isLoading, sendMessage, clearMessages } = useChat();
   const bottomRef = useRef<HTMLDivElement>(null);
+  
+  // Estado para o Modo Silêncio
+  const [isSilentMode, setIsSilentMode] = useState(false);
+  const [silentSeconds, setSilentSeconds] = useState(0);
 
   useEffect(() => {
     if (!user) {
@@ -30,12 +35,49 @@ export function ChatPage() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
+  // Monitora a última mensagem para detectar ordens de silêncio
+  useEffect(() => {
+    if (messages.length > 0 && messages[messages.length - 1].role === 'assistant') {
+      const lastMsg = messages[messages.length - 1].content.toLowerCase();
+      const silenceKeywords = ['silêncio', 'calado', 'cale a boca', 'não diga nada', 'espere minha ordem', 'fique quieto'];
+      
+      const shouldBeSilent = silenceKeywords.some(keyword => lastMsg.includes(keyword));
+      
+      if (shouldBeSilent && !isSilentMode) {
+        setIsSilentMode(true);
+        const duration = 30; // 30 segundos de silêncio forçado
+        setSilentSeconds(duration);
+        toast.info("Ordem de silêncio recebida. Obedeça.");
+      }
+    }
+  }, [messages, isSilentMode]);
+
+  // Lógica do cronômetro de silêncio
+  useEffect(() => {
+    let interval: number;
+    if (isSilentMode && silentSeconds > 0) {
+      interval = window.setInterval(() => {
+        setSilentSeconds(prev => prev - 1);
+      }, 1000);
+    } else if (isSilentMode && silentSeconds === 0) {
+      setIsSilentMode(false);
+      // Retorno automático da Mistress
+      handleSend("..."); // Envia um sinal de que o tempo acabou
+    }
+    return () => clearInterval(interval);
+  }, [isSilentMode, silentSeconds]);
+
   const handleSend = async (content: string) => {
+    if (isSilentMode && content !== "...") return;
     if (!canSendMessage() && profile?.subscription_status !== 'pro' && profile?.subscription_status !== 'extreme') return;
     
     const currentCount = (profile?.daily_message_count ?? 0) + 1;
     await incrementMessageCount();
-    sendMessage(content, profile?.subscription_status ?? 'free', currentCount);
+    
+    // Se for o retorno do silêncio, enviamos um prompt oculto para a IA
+    const finalContent = content === "..." ? "O tempo de silêncio acabou. O pet obedeceu. Continue com a próxima ordem." : content;
+    
+    sendMessage(finalContent, profile?.subscription_status ?? 'free', currentCount);
   };
 
   const isPro = profile?.subscription_status === 'pro' || profile?.subscription_status === 'extreme';
@@ -48,7 +90,11 @@ export function ChatPage() {
           <div>
             <h2 className="text-sm font-semibold text-foreground">Mistress Elara</h2>
             <p className="text-xs text-muted-foreground">
-              {isPro ? (
+              {isSilentMode ? (
+                <span className="flex items-center gap-1 text-amber-500 animate-pulse">
+                  <Timer className="h-3 w-3" /> Silêncio: {silentSeconds}s
+                </span>
+              ) : isPro ? (
                 <span className="flex items-center gap-1 text-primary">
                   <Crown className="h-3 w-3" /> Modo Extreme
                 </span>
@@ -64,7 +110,6 @@ export function ChatPage() {
             size="icon" 
             onClick={() => navigate('/admin-gallery')} 
             className="h-8 w-8 text-muted-foreground hover:text-primary"
-            title="Gérer la galerie"
           >
             <ImageIcon className="h-4 w-4" />
           </Button>
@@ -73,7 +118,6 @@ export function ChatPage() {
             size="icon" 
             onClick={toggleExtreme} 
             className={`h-8 w-8 ${isPro ? 'text-primary' : 'text-muted-foreground'} hover:text-primary`}
-            title="Toggle Extreme (Dev)"
           >
             <Zap className="h-4 w-4" />
           </Button>
@@ -82,7 +126,6 @@ export function ChatPage() {
             size="icon" 
             onClick={resetCounts} 
             className="h-8 w-8 text-muted-foreground hover:text-primary"
-            title="Reset limits (Dev)"
           >
             <RefreshCcw className="h-4 w-4" />
           </Button>
@@ -136,7 +179,7 @@ export function ChatPage() {
 
       <ChatInput
         onSend={handleSend}
-        disabled={isLoading || (!canSendMessage() && !isPro)}
+        disabled={isLoading || isSilentMode || (!canSendMessage() && !isPro)}
         remainingMessages={isPro ? 999 : remainingMessages()}
       />
     </div>
