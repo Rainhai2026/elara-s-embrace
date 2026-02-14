@@ -5,14 +5,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const INITIAL_WELCOME_IMAGE = 'https://i.ibb.co/cKLtsYJ6/hotmartdomina.jpg';
-
-const STYLES_EXTREME = [
-  "holding a heavy leather whip, Pixar 3D style, dominant expression, dark stylized dungeon, Octane render",
-  "sitting on a throne of chains, Disney animation style, latex outfit, holding a collar, big expressive eyes",
-  "standing over the camera with disdain, stylized 3D character, holding handcuffs, cinematic lighting",
-  "wearing a black leather mask and corset, holding a riding crop, Pixar movie style",
-  "adjusting a leather collar with a sadistic smile, 3D animation style, high resolution"
+// Stock d'images prédéfinies de Mistress Elara
+const IMAGE_STOCK = [
+  'https://i.ibb.co/cKLtsYJ6/hotmartdomina.jpg', // Image principale
+  'https://images.unsplash.com/photo-1589156280159-27698a70f29e?q=80&w=1000&auto=format&fit=crop', // Exemple: Dominante sombre
+  'https://images.unsplash.com/photo-1517841905240-472988babdf9?q=80&w=1000&auto=format&fit=crop', // Exemple: Regard intense
+  'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?q=80&w=1000&auto=format&fit=crop', // Exemple: Sophistiquée
+  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=1000&auto=format&fit=crop', // Exemple: Sourire sardonique
 ];
 
 serve(async (req) => {
@@ -50,63 +49,49 @@ serve(async (req) => {
     let content = data.choices[0]?.message?.content || "";
     let imageUrl = null;
 
-    // Détection ultra-robuste
+    // Détection de la demande d'image
     const lastUserMsg = messages[messages.length - 1]?.content || "";
     const prevAiMsg = messages.length >= 2 ? messages[messages.length - 2]?.content : "";
     
-    const userAskedExplicitly = /foto|imagem|mostra|ver|pic|olha|photo|image/i.test(lastUserMsg);
-    const userSaidYes = /sim|quero|ok|yes|claro|com certeza/i.test(lastUserMsg) && /ver|mostrar|foto|imagem|quer/i.test(prevAiMsg);
+    const userAsked = /foto|imagem|mostra|ver|pic|olha|photo|image/i.test(lastUserMsg);
+    const userSaidYes = /sim|quero|ok|yes|claro/i.test(lastUserMsg) && /ver|mostrar|foto|imagem|quer/i.test(prevAiMsg);
     const aiWantsToSend = content.includes('[SEND_IMAGE]') || /olhe|veja|mostro|aqui está/i.test(content);
 
-    // Nettoyage du texte
     content = content.replace(/\[SEND_IMAGE\]/g, '').replace(/\*.*?\*/g, '').trim();
     if (!content && aiWantsToSend) content = "Olhe para mim.";
 
-    const shouldSendImage = isFirstResponse || (isPro && (userAskedExplicitly || userSaidYes || aiWantsToSend));
+    const shouldSendImage = isFirstResponse || (isPro && (userAsked || userSaidYes || aiWantsToSend));
 
-    if (shouldSendImage && veniceKey) {
-      try {
-        const randomStyle = STYLES_EXTREME[Math.floor(Math.random() * STYLES_EXTREME.length)];
-        const seed = Math.floor(Math.random() * 1000000);
-        
-        const imgResponse = await fetch('https://api.venice.ai/api/v1/image/generate', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${veniceKey}`,
-          },
-          body: JSON.stringify({
-            model: "fluently-xl",
-            prompt: `High-quality 3D render, Pixar style, Disney animation style, a beautiful 32yo Brazilian woman, stylized character, black leather and latex outfit, ${randomStyle}, masterpiece, cinematic lighting, seed ${seed}`,
-            negative_prompt: "photorealistic, real life, photography, human, ugly, deformed, blurry, low quality, real person",
-            width: 1024,
-            height: 1024,
-            steps: 25
-          }),
-        });
+    if (shouldSendImage) {
+      // On pioche d'abord dans le stock pour la rapidité et la variété
+      const randomIndex = Math.floor(Math.random() * IMAGE_STOCK.length);
+      imageUrl = IMAGE_STOCK[randomIndex];
 
-        const imgData = await imgResponse.json();
-        let rawImage = imgData.images?.[0] || imgData.data?.[0]?.url || imgData.data?.[0]?.b64_json;
-
-        if (rawImage) {
-          imageUrl = rawImage.startsWith('http') || rawImage.startsWith('data:') ? rawImage : `data:image/png;base64,${rawImage}`;
+      // Tentative de génération IA en arrière-plan si la clé est présente (optionnel)
+      if (veniceKey && Math.random() > 0.7) { // 30% de chance de tenter une nouvelle image IA
+        try {
+          const imgResponse = await fetch('https://api.venice.ai/api/v1/image/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${veniceKey}` },
+            body: JSON.stringify({
+              model: "fluently-xl",
+              prompt: "High-quality 3D render, Pixar style, beautiful 32yo Brazilian woman, black leather outfit, dominant, cinematic lighting",
+              width: 1024, height: 1024, steps: 20
+            }),
+          });
+          const imgData = await imgResponse.json();
+          const rawImage = imgData.images?.[0] || imgData.data?.[0]?.url;
+          if (rawImage) imageUrl = rawImage;
+        } catch (e) {
+          console.error("[chat] IA Image failed, using stock fallback");
         }
-      } catch (e) {
-        console.error("[chat] Image generation failed", e);
-      }
-      
-      // FALLBACK: Si la génération a échoué mais qu'une image était demandée, on envoie l'image de base
-      if (!imageUrl) {
-        imageUrl = INITIAL_WELCOME_IMAGE;
       }
     }
-
-    if (isFirstResponse && !imageUrl) imageUrl = INITIAL_WELCOME_IMAGE;
 
     return new Response(JSON.stringify({ content: content || "...", imageUrl }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    return new Response(JSON.stringify({ content: 'Erro no sistema, pet.' }), { headers: corsHeaders });
+    return new Response(JSON.stringify({ content: 'Erro no sistema.' }), { headers: corsHeaders });
   }
 });
