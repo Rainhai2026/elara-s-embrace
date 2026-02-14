@@ -8,11 +8,11 @@ const corsHeaders = {
 const INITIAL_WELCOME_IMAGE = 'https://i.ibb.co/cKLtsYJ6/hotmartdomina.jpg';
 
 const STYLES_EXTREME = [
-  "holding a heavy leather whip, dominant and cruel expression, dark dungeon, realistic skin texture, cinematic lighting, hyper-realistic photography",
-  "sitting on a throne of chains, wearing a tight latex corset, holding a leather collar, 8k uhd, high quality photography, realistic lighting",
-  "standing over the camera with disdain, holding handcuffs, realistic woman, detailed eyes, professional photography",
-  "wearing a black leather mask and corset, holding a riding crop, intense atmosphere, photorealistic, grainy film texture",
-  "adjusting a leather collar with a sadistic smile, dark lighting, realistic shadows, high resolution photo"
+  "holding a heavy leather whip, Pixar 3D style, dominant and cruel expression, dark stylized dungeon, Octane render, masterpiece",
+  "sitting on a throne of chains, Disney animation style, wearing a tight latex corset, holding a leather collar, big expressive eyes, high quality 3D render",
+  "standing over the camera with disdain, stylized 3D character, holding handcuffs, cinematic lighting, 8k resolution",
+  "wearing a black leather mask and corset, holding a riding crop, intense atmosphere, Pixar movie style, detailed 3D model",
+  "adjusting a leather collar with a sadistic smile, dark stylized lighting, 3D animation style, high resolution render"
 ];
 
 serve(async (req) => {
@@ -73,8 +73,8 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               model: "fluently-xl",
-              prompt: `Hyper-realistic photography, 8k resolution, a beautiful 32yo Brazilian woman, realistic skin, detailed face, black leather and latex outfit, ${randomStyle}, masterpiece, cinematic lighting, seed ${seed}`,
-              negative_prompt: "cartoon, 3d, render, animation, pixar, disney, anime, drawing, painting, blurry, low quality, deformed, child, minor",
+              prompt: `High-quality 3D render, Pixar style, Disney animation style, a beautiful 32yo Brazilian woman, stylized character, black leather and latex outfit, ${randomStyle}, masterpiece, cinematic lighting, seed ${seed}`,
+              negative_prompt: "photorealistic, real life, photography, human, ugly, deformed, blurry, low quality",
               width: 1024,
               height: 1024,
               steps: 35
