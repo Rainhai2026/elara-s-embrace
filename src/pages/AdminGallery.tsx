@@ -1,19 +1,31 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Trash2, Plus, ArrowLeft, Image as ImageIcon, AlertCircle, ListPlus } from 'lucide-react';
+import { Trash2, Plus, ArrowLeft, Image as ImageIcon, AlertCircle, ListPlus, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function AdminGallery() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user, signInAnonymously } = useAuth();
   const [newUrl, setNewUrl] = useState('');
   const [bulkUrls, setBulkUrls] = useState('');
   const [showBulk, setShowBulk] = useState(false);
+
+  // Garantir que o usuário tenha uma sessão (mesmo anônima) para interagir com o banco
+  useEffect(() => {
+    if (!user) {
+      signInAnonymously().catch(err => {
+        console.error("Erro ao autenticar:", err);
+        toast.error("Erro de conexão com o servidor.");
+      });
+    }
+  }, [user, signInAnonymously]);
 
   const { data: images, isLoading } = useQuery({
     queryKey: ['gallery-images'],
@@ -25,6 +37,7 @@ export default function AdminGallery() {
       if (error) throw error;
       return data;
     },
+    enabled: !!user, // Só busca se o usuário estiver "logado"
   });
 
   const addMutation = useMutation({
@@ -40,8 +53,10 @@ export default function AdminGallery() {
       setShowBulk(false);
       toast.success('Fotos adicionadas com sucesso');
     },
-    onError: () => {
-      toast.error('Erro ao adicionar fotos. Verifique os links.');
+    onError: (error: any) => {
+      console.error("Erro Supabase:", error);
+      // Mostra a mensagem de erro real do banco de dados
+      toast.error(`Erro: ${error.message || 'Verifique os links e tente novamente'}`);
     }
   });
 
@@ -54,6 +69,9 @@ export default function AdminGallery() {
       queryClient.invalidateQueries({ queryKey: ['gallery-images'] });
       toast.success('Foto removida');
     },
+    onError: (error: any) => {
+      toast.error(`Erro ao remover: ${error.message}`);
+    }
   });
 
   const handleAddSingle = (e: React.FormEvent) => {
@@ -116,7 +134,8 @@ export default function AdminGallery() {
               className="flex-1"
             />
             <Button type="submit" disabled={addMutation.isPending}>
-              <Plus className="h-4 w-4 mr-2" /> Adicionar
+              {addMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />} 
+              Adicionar
             </Button>
           </form>
         ) : (
@@ -128,14 +147,22 @@ export default function AdminGallery() {
               className="min-h-[150px] font-mono text-xs"
             />
             <Button onClick={handleAddBulk} className="w-full" disabled={addMutation.isPending}>
-              <ListPlus className="h-4 w-4 mr-2" /> Adicionar {bulkUrls.split('\n').filter(u => u.trim()).length} fotos
+              {addMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <ListPlus className="h-4 w-4 mr-2" />
+              )}
+              Adicionar {bulkUrls.split('\n').filter(u => u.trim()).length} fotos
             </Button>
           </div>
         )}
       </div>
 
       {isLoading ? (
-        <div className="text-center py-12 text-muted-foreground">Carregando galeria...</div>
+        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p>Carregando galeria...</p>
+        </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {images?.map((img) => (
