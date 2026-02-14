@@ -25,6 +25,8 @@ serve(async (req) => {
     const isPro = subscription_status === 'pro' || subscription_status === 'extreme';
     const isFirstResponse = messages.length <= 1;
     
+    console.log(`[chat] Status: ${subscription_status}, isPro: ${isPro}, Messages: ${messages.length}`);
+
     const veniceKey = Deno.env.get('VENICE_API_KEY');
     const veniceModel = Deno.env.get('VENICE_MODEL_PRO') || 'venice-uncensored';
 
@@ -61,19 +63,22 @@ serve(async (req) => {
     const hasDescription = descriptionRegex.test(content);
     content = content.replace(descriptionRegex, '').replace('[SEND_IMAGE]', '').trim();
 
-    // Si après nettoyage il ne reste qu'un point ou rien, on met un texte par défaut
     if (!content || content === '.') {
       content = "*olha para você com um sorriso autoritário, esperando sua reação*";
     }
 
-    const mentionsVisual = /foto|imagem|olha|veja|vê|visão|mostr|aqui está|prepara/i.test(data.choices[0]?.message?.content || "");
+    const rawContent = data.choices[0]?.message?.content || "";
+    const mentionsVisual = /foto|imagem|olha|veja|vê|visão|mostr|aqui está|prepara/i.test(rawContent);
     const lastUserMsg = messages[messages.length - 1]?.content || "";
     const userAsked = /foto|imagem|mostra|ver/i.test(lastUserMsg);
     
     const shouldSendImage = isFirstResponse || (isPro && (hasDescription || mentionsVisual || userAsked));
     
+    console.log(`[chat] shouldSendImage: ${shouldSendImage}, userAsked: ${userAsked}, mentionsVisual: ${mentionsVisual}`);
+
     if (shouldSendImage) {
       if (isPro && veniceKey && !isFirstResponse) {
+        console.log("[chat] Generating new image via Venice...");
         try {
           const randomStyle = STYLES[Math.floor(Math.random() * STYLES.length)];
           const imgResponse = await fetch('https://api.venice.ai/api/v1/image/generate', {
@@ -96,12 +101,16 @@ serve(async (req) => {
           const imgData = await imgResponse.json();
           if (imgData.images?.[0]) {
             imageUrl = imgData.images[0];
+            console.log("[chat] Image generated successfully");
+          } else {
+            console.error("[chat] No image in Venice response", imgData);
           }
         } catch (e) {
           console.error("[chat] Image generation error", e);
         }
       } else if (isFirstResponse) {
         imageUrl = INITIAL_WELCOME_IMAGE;
+        console.log("[chat] Using initial welcome image");
       }
     }
 
@@ -109,6 +118,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
+    console.error("[chat] Global error", error);
     return new Response(JSON.stringify({ content: '*suspira* Algo deu errado, pet.' }), { headers: corsHeaders });
   }
 });
