@@ -31,9 +31,11 @@ export function ChatPage() {
   }, [messages, isLoading]);
 
   const handleSend = async (content: string) => {
-    if (!canSendMessage() && profile?.subscription_status !== 'pro') return;
+    if (!canSendMessage() && profile?.subscription_status !== 'pro' && profile?.subscription_status !== 'extreme') return;
+    
+    const currentCount = (profile?.daily_message_count ?? 0) + 1;
     await incrementMessageCount();
-    sendMessage(content, profile?.subscription_status ?? 'free');
+    sendMessage(content, profile?.subscription_status ?? 'free', currentCount);
   };
 
   const isPro = profile?.subscription_status === 'pro' || profile?.subscription_status === 'extreme';

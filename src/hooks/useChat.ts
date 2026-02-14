@@ -11,7 +11,7 @@ export function useChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const sendMessage = useCallback(async (content: string, subscriptionStatus: string) => {
+  const sendMessage = useCallback(async (content: string, subscriptionStatus: string, messageCount: number) => {
     const userMessage: ChatMessage = { role: 'user', content };
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
@@ -22,6 +22,7 @@ export function useChat() {
         body: {
           messages: updatedMessages,
           subscription_status: subscriptionStatus,
+          message_count: messageCount,
         },
       });
 
@@ -38,7 +39,7 @@ export function useChat() {
       console.error('Chat error:', err);
       setMessages(prev => [
         ...prev,
-        { role: 'assistant', content: '*suspira* Algo deu errado, pet. Tente novamente.' },
+        { role: 'assistant', content: 'Minha paciência tem limites. Tente de novo.' },
       ]);
     } finally {
       setIsLoading(false);

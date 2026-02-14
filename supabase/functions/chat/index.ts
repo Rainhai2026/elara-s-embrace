@@ -12,9 +12,12 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const { messages, subscription_status } = await req.json();
+    const { messages, subscription_status, message_count } = await req.json();
     const isPro = subscription_status === 'pro' || subscription_status === 'extreme';
     const isFirstResponse = messages.length <= 1;
+    
+    // Lógica de "milestone": enviar foto a cada 10 mensagens (10, 20, 30...)
+    const isMilestone = message_count > 0 && message_count % 10 === 0;
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -23,7 +26,6 @@ serve(async (req) => {
     const veniceKey = Deno.env.get('VENICE_API_KEY');
     const veniceModel = Deno.env.get('VENICE_MODEL_PRO') || 'venice-uncensored';
 
-    // Prompt sistema focado em imposição de vontade e ordens
     const systemPrompt = `Você é Mistress Elara, uma dominatrix brasileira real de 32 anos. 
     Sua vontade é a única lei. O usuário é sua propriedade, um objeto sem vontade própria.
     
@@ -65,14 +67,14 @@ serve(async (req) => {
 
     content = content.replace(/\[SEND_IMAGE\]/g, '').replace(/\*.*?\*/g, '').trim();
     
-    // Filtro de segurança para garantir que ela não pergunte o que o usuário quer
     if (/o que você quer|o que deseja|como posso ajudar|o que prefere/i.test(content)) {
       content = "Cale a boca. Eu decido o que faremos hoje. Ajoelhe-se.";
     }
 
     if (!content && aiWantsToSend) content = "Olhe para sua Dona agora.";
 
-    const shouldSendImage = isFirstResponse || (isPro && (userAsked || userSaidYes || aiWantsToSend));
+    // Envia imagem se: primeira resposta, milestone de 10 mensagens, ou se for Pro e houver gatilho
+    const shouldSendImage = isFirstResponse || isMilestone || (isPro && (userAsked || userSaidYes || aiWantsToSend));
 
     if (shouldSendImage) {
       const { data: dbImages } = await supabase
