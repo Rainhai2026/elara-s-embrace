@@ -16,52 +16,55 @@ serve(async (req) => {
     const { messages, subscription_status } = await req.json();
     const isPro = subscription_status === 'pro';
     
-    const openRouterKey = Deno.env.get('OPENROUTER_API_KEY');
-    // Modèle Llama 3 qui est très stable en version gratuite
-    const openRouterModel = Deno.env.get('OPENROUTER_MODEL_FREE') || 'meta-llama/llama-3-8b-instruct:free';
-    
+    // On utilise maintenant Venice pour TOUT le monde
     const veniceKey = Deno.env.get('VENICE_API_KEY');
     const veniceModel = Deno.env.get('VENICE_MODEL_PRO') || 'venice-uncensored';
 
-    const systemPromptFree = `Você é Mistress Elara, uma dominatrix brasileira de 32 anos. Autoritária, sensual e sádica. Você fala português brasileiro. Use *ações entre asteriscos*.`;
-    const systemPromptExtreme = `Você é Mistress Elara, uma dominatrix brasileira de 32 anos. Autoritária, cruel e sádica. Sem limites. Use *ações entre asteriscos*.`;
+    // Personnalité Soft (Gratuit)
+    const systemPromptFree = `Você é Mistress Elara, uma dominatrix brasileira de 32 anos. Autoritária, sensual e sofisticada. 
+    Neste modo GRATUITO, você é provocante mas mantém o conteúdo erótico moderado (soft). 
+    Você deve ser frustrante: provoque o usuário, mas quando as coisas esquentarem, diga que ele precisa do "Modo Extreme" para ir além.
+    Use *ações entre asteriscos*. Fale português brasileiro.`;
+
+    // Personnalité Hardcore (Extreme)
+    const systemPromptExtreme = `Você é Mistress Elara, uma dominatrix brasileira de 32 anos. Autoritária, cruel, sádica e sem filtros. 
+    Neste modo EXTREME, não há limites. Você é a dona absoluta. Detalhes gráficos, BDSM pesado e humilhação total são permitidos.
+    Use *ações entre asteriscos*. Fale português brasileiro.`;
 
     const systemPrompt = isPro ? systemPromptExtreme : systemPromptFree;
-    const apiUrl = isPro ? 'https://api.venice.ai/api/v1/chat/completions' : 'https://openrouter.ai/api/v1/chat/completions';
-    const apiKey = isPro ? veniceKey : openRouterKey;
-    const model = isPro ? veniceModel : openRouterModel;
+    const apiUrl = 'https://api.venice.ai/api/v1/chat/completions';
 
-    if (!apiKey) {
+    if (!veniceKey) {
       return new Response(
-        JSON.stringify({ content: "*suspira* Pet, você esqueceu de configurar a chave OPENROUTER_API_KEY nos Secrets do Supabase." }),
+        JSON.stringify({ content: "*olhar de desprezo* Pet, você esqueceu de configurar a VENICE_API_KEY nos Secrets do Supabase." }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    console.log(`${functionName} Calling Venice for ${isPro ? 'Extreme' : 'Free'} mode`);
 
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        'X-Title': 'Mistress Elara AI',
+        'Authorization': `Bearer ${veniceKey}`,
       },
       body: JSON.stringify({
-        model: model,
+        model: veniceModel,
         messages: [{ role: 'system', content: systemPrompt }, ...messages],
         temperature: 0.8,
+        venice_parameters: {
+          include_venice_system_prompt: false
+        }
       }),
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      console.error(`${functionName} API Error:`, data);
-      let errorMsg = "Meus pensamentos estão confusos agora.";
-      if (data.error?.code === 402) errorMsg = "Minha conta OpenRouter precisa de créditos, mesmo para modelos gratuitos.";
-      if (data.error?.code === 401) errorMsg = "Sua chave API do OpenRouter parece inválida.";
-      
+      console.error(`${functionName} Venice API Error:`, data);
       return new Response(
-        JSON.stringify({ content: `*olhar frio* ${errorMsg} (Erro ${response.status})` }),
+        JSON.stringify({ content: `*estala o chicote* Erro na API Venice: ${data.error?.message || 'Erro desconhecido'}` }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -70,8 +73,9 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
+    console.error(`${functionName} Global Error:`, error);
     return new Response(
-      JSON.stringify({ content: '*estala o chicote* Erro técnico na conexão. Tente novamente.' }),
+      JSON.stringify({ content: '*suspira* Erro técnico. Tente novamente.' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   }
