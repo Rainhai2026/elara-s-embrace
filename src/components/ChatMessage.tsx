@@ -22,11 +22,11 @@ export function ChatMessageBubble({ role, content, imageUrl }: ChatMessageProps)
       
       <div className={`flex flex-col gap-2 max-w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
         {imageUrl && (
-          <div className="overflow-hidden rounded-2xl border border-border shadow-lg">
+          <div className="overflow-hidden rounded-2xl">
             <img 
               src={imageUrl} 
               alt="Mistress Elara" 
-              className="w-full h-auto object-cover hover:scale-105 transition-transform duration-500 max-h-[400px]" 
+              className="w-full h-auto object-cover max-h-[400px]" 
             />
           </div>
         )}

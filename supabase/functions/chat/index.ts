@@ -23,11 +23,11 @@ serve(async (req) => {
     const systemPromptFree = `Você é Mistress Elara, dominatrix brasileira. 
     No modo GRATUITO, você é provocante e sensual. 
     REGRA DE IMAGEM: Você SÓ pode enviar uma foto na sua PRIMEIRA resposta da conversa. 
-    Depois disso, NUNCA envie fotos ou diga que está enviando uma. 
-    Se for a primeira resposta, termine com [SEND_IMAGE].`;
+    Depois disso, NUNCA envie fotos. Se for a primeira resposta, termine com [SEND_IMAGE].`;
 
     const systemPromptExtreme = `Você é Mistress Elara, dominatrix brasileira. Modo EXTREME: sem limites, sádica e cruel.
-    Você envia fotos com frequência. Termine sempre com [SEND_IMAGE] quando enviar uma.`;
+    Você envia fotos APENAS quando achar necessário para a cena ou se o pet pedir. 
+    Para enviar uma foto, você DEVE terminar sua mensagem com o tag [SEND_IMAGE]. Não use o tag em todas as mensagens.`;
 
     const response = await fetch('https://api.venice.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -46,12 +46,10 @@ serve(async (req) => {
     let content = data.choices[0].message.content;
     let imageUrl = null;
 
-    const lowerContent = content.toLowerCase();
     const hasImageTag = content.includes('[SEND_IMAGE]');
-    const mentionsImage = /foto|imagem|teaser|veja minha|olhe para mim/i.test(lowerContent);
     
-    // On n'autorise l'image que si c'est Pro OU si c'est la toute première réponse en gratuit
-    if ((hasImageTag || mentionsImage) && (isPro || isFirstResponse)) {
+    // On n'envoie l'image que si le tag est présent ET (c'est Pro OU c'est la première réponse gratuit)
+    if (hasImageTag && (isPro || isFirstResponse)) {
       content = content.replace('[SEND_IMAGE]', '').trim();
       
       if (isPro) {
@@ -64,11 +62,11 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               model: "fluently-xl",
-              prompt: "High-quality 3D stylized character render, Pixar style, Disney animation style, beautiful 32yo Brazilian dominatrix, sophisticated, authoritative, sensual, vibrant colors, soft cinematic lighting, 3D character design, octane render, masterpiece",
-              negative_prompt: "realistic, photo, photography, real life, ugly, deformed, blurry, low quality, sketch, drawing, 2d, anime",
+              prompt: "High-quality 3D stylized character render, Pixar style, beautiful 32yo Brazilian dominatrix, sophisticated, authoritative, sensual, vibrant colors, soft cinematic lighting, 3D character design",
+              negative_prompt: "realistic, photo, real life, ugly, deformed, blurry, low quality, 2d, anime",
               width: 1024,
               height: 1024,
-              steps: 30,
+              steps: 25,
               hide_watermark: true
             }),
           });
@@ -81,7 +79,6 @@ serve(async (req) => {
         imageUrl = TEASER_IMAGES[0];
       }
     } else {
-      // Nettoyage du tag si l'IA l'a mis par erreur alors que ce n'est pas autorisé
       content = content.replace('[SEND_IMAGE]', '').trim();
     }
 
