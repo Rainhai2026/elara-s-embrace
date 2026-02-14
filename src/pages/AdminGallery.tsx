@@ -17,15 +17,19 @@ export default function AdminGallery() {
   const [bulkUrls, setBulkUrls] = useState('');
   const [showBulk, setShowBulk] = useState(false);
 
-  // Garantir que o usuário tenha uma sessão (mesmo anônima) para interagir com o banco
   useEffect(() => {
-    if (!user) {
-      signInAnonymously().catch(err => {
-        console.error("Erro ao autenticar:", err);
-        toast.error("Erro de conexão com o servidor.");
-      });
-    }
-  }, [user, signInAnonymously]);
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        try {
+          await supabase.auth.signInAnonymously();
+        } catch (err) {
+          console.error("Auth error:", err);
+        }
+      }
+    };
+    checkAuth();
+  }, []);
 
   const { data: images, isLoading } = useQuery({
     queryKey: ['gallery-images'],
@@ -37,7 +41,6 @@ export default function AdminGallery() {
       if (error) throw error;
       return data;
     },
-    enabled: !!user, // Só busca se o usuário estiver "logado"
   });
 
   const addMutation = useMutation({
@@ -55,7 +58,6 @@ export default function AdminGallery() {
     },
     onError: (error: any) => {
       console.error("Erro Supabase:", error);
-      // Mostra a mensagem de erro real do banco de dados
       toast.error(`Erro: ${error.message || 'Verifique os links e tente novamente'}`);
     }
   });
@@ -77,23 +79,12 @@ export default function AdminGallery() {
   const handleAddSingle = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUrl.trim()) return;
-    if (!newUrl.match(/\.(jpg|jpeg|png|webp|gif)/i)) {
-      toast.error("O link deve ser DIRETO (terminar em .jpg, .png, etc)");
-      return;
-    }
     addMutation.mutate([newUrl.trim()]);
   };
 
   const handleAddBulk = () => {
     const urls = bulkUrls.split('\n').filter(url => url.trim().length > 0);
     if (urls.length === 0) return;
-    
-    const invalid = urls.filter(url => !url.match(/\.(jpg|jpeg|png|webp|gif)/i));
-    if (invalid.length > 0) {
-      toast.error(`${invalid.length} links parecem não ser diretos. Use links que terminam em .jpg ou .png`);
-      return;
-    }
-    
     addMutation.mutate(urls);
   };
 
@@ -112,8 +103,7 @@ export default function AdminGallery() {
         <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
         <div className="text-sm text-amber-200/80">
           <p className="font-bold text-amber-500 mb-1">Atenção aos Links!</p>
-          Use apenas <strong>Links Diretos</strong> (ex: https://i.ibb.co/abc/foto.jpg). 
-          Links de páginas (ex: https://ibb.co/abc) <strong>não funcionam</strong> no chat.
+          Use apenas <strong>Links Diretos</strong> (ex: https://i.ibb.co/abc/foto.jpg).
         </div>
       </div>
 
@@ -128,7 +118,7 @@ export default function AdminGallery() {
         {!showBulk ? (
           <form onSubmit={handleAddSingle} className="flex gap-2 bg-card p-4 rounded-xl border border-border">
             <Input
-              placeholder="Cole o link DIRETO da imagem (.jpg, .png)..."
+              placeholder="Cole o link DIRETO da imagem..."
               value={newUrl}
               onChange={(e) => setNewUrl(e.target.value)}
               className="flex-1"
@@ -180,11 +170,6 @@ export default function AdminGallery() {
               </div>
             </div>
           ))}
-          {images?.length === 0 && (
-            <div className="col-span-full text-center py-12 border-2 border-dashed border-border rounded-xl text-muted-foreground">
-              Nenhuma imagem na galeria.
-            </div>
-          )}
         </div>
       )}
     </div>
