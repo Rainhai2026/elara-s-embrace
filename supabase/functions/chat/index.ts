@@ -35,7 +35,7 @@ serve(async (req) => {
 
     const systemPromptExtreme = `Você é Mistress Elara, dominatrix brasileira em estilo Pixar 3D. Modo EXTREME: sem limites, sádica e cruel.
     Você envia fotos sempre que o usuário pedir ou a cena exigir. 
-    REGRA CRÍTICA: Para enviar uma foto, você DEVE terminar sua mensagem com a tag [SEND_IMAGE]. Sem essa tag, o sistema não gera a imagem.`;
+    REGRA CRÍTICA: Sempre que você for mostrar algo, enviar uma foto ou dar uma "visão" ao pet, você DEVE terminar sua mensagem com a tag [SEND_IMAGE]. Sem essa tag, o pet não consegue ver nada e fica triste.`;
 
     const response = await fetch('https://api.venice.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -54,10 +54,16 @@ serve(async (req) => {
     let content = data.choices[0]?.message?.content || "Desculpe, pet.";
     let imageUrl = null;
 
-    // Détection de la balise ou de l'intention (si l'IA oublie la balise mais parle de photo)
+    // Détection ultra-large de l'intention d'envoyer une image
     const hasImageTag = content.includes('[SEND_IMAGE]');
-    const mentionsPhoto = /foto|imagem|olha só|vê só/i.test(content);
-    const shouldSendImage = hasImageTag || (isFirstResponse) || (isPro && mentionsPhoto);
+    const mentionsVisual = /foto|imagem|olha|veja|vê|visão|mostr|aqui está|prepara/i.test(content);
+    
+    // Vérifier si l'utilisateur a demandé une photo dans son dernier message
+    const lastUserMsg = messages[messages.length - 1]?.content || "";
+    const userAsked = /foto|imagem|mostra|ver/i.test(lastUserMsg);
+    const aiAgreed = /claro|com certeza|agora|vou|toma/i.test(content);
+
+    const shouldSendImage = hasImageTag || (isFirstResponse) || (isPro && (mentionsVisual || (userAsked && aiAgreed)));
     
     if (shouldSendImage) {
       content = content.replace('[SEND_IMAGE]', '').trim();
@@ -88,7 +94,6 @@ serve(async (req) => {
           console.error("Image generation error", e);
         }
       } else if (isFirstResponse) {
-        // Toujours envoyer l'image de bienvenue sur le premier message
         imageUrl = INITIAL_WELCOME_IMAGE;
       }
     } else {
