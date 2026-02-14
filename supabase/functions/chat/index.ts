@@ -5,10 +5,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Image de bienvenue (Pixar style)
 const INITIAL_WELCOME_IMAGE = 'https://i.ibb.co/cKLtsYJ6/hotmartdomina.jpg';
 
-// Styles spécifiques Pixar 3D avec accessoires
 const STYLES = [
   "holding a black leather whip, standing in a dominant pose, Pixar 3D style",
   "holding a riding crop (cravache), sitting on a dark throne, Disney animation style",
@@ -32,12 +30,12 @@ serve(async (req) => {
 
     const systemPromptFree = `Você é Mistress Elara, dominatrix brasileira em estilo Pixar 3D. 
     No modo GRATUITO, você é provocante e sensual. 
-    REGRA DE IMAGEM: Você SÓ pode enviar uma foto na sua PRIMEIRA resposta da conversa. 
-    Depois disso, NUNCA envie fotos. Se for a primeira resposta, termine com [SEND_IMAGE].`;
+    REGRA DE IMAGEM: Você DEVE enviar uma foto na sua PRIMEIRA resposta da conversa. 
+    Para isso, você OBRIGATORIAMENTE deve terminar sua mensagem com a tag [SEND_IMAGE].`;
 
     const systemPromptExtreme = `Você é Mistress Elara, dominatrix brasileira em estilo Pixar 3D. Modo EXTREME: sem limites, sádica e cruel.
-    Você envia fotos quando a cena pedir. Varie suas respostas.
-    Para enviar uma foto, termine sua mensagem com o tag [SEND_IMAGE].`;
+    Você envia fotos sempre que o usuário pedir ou a cena exigir. 
+    REGRA CRÍTICA: Para enviar uma foto, você DEVE terminar sua mensagem com a tag [SEND_IMAGE]. Sem essa tag, o sistema não gera a imagem.`;
 
     const response = await fetch('https://api.venice.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -56,12 +54,15 @@ serve(async (req) => {
     let content = data.choices[0]?.message?.content || "Desculpe, pet.";
     let imageUrl = null;
 
+    // Détection de la balise ou de l'intention (si l'IA oublie la balise mais parle de photo)
     const hasImageTag = content.includes('[SEND_IMAGE]');
+    const mentionsPhoto = /foto|imagem|olha só|vê só/i.test(content);
+    const shouldSendImage = hasImageTag || (isFirstResponse) || (isPro && mentionsPhoto);
     
-    if (hasImageTag) {
+    if (shouldSendImage) {
       content = content.replace('[SEND_IMAGE]', '').trim();
       
-      if (isPro && veniceKey) {
+      if (isPro && veniceKey && !isFirstResponse) {
         try {
           const randomStyle = STYLES[Math.floor(Math.random() * STYLES.length)];
           const imgResponse = await fetch('https://api.venice.ai/api/v1/image/generate', {
@@ -84,9 +85,10 @@ serve(async (req) => {
           const imgData = await imgResponse.json();
           imageUrl = imgData.images?.[0];
         } catch (e) {
-          imageUrl = null; // Pas de fallback sur des images réelles
+          console.error("Image generation error", e);
         }
       } else if (isFirstResponse) {
+        // Toujours envoyer l'image de bienvenue sur le premier message
         imageUrl = INITIAL_WELCOME_IMAGE;
       }
     } else {
