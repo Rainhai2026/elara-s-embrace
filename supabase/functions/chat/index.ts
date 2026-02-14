@@ -15,13 +15,12 @@ serve(async (req) => {
 
     const isPro = subscription_status === 'pro';
     
-    // Récupération des secrets
+    // Récupération des secrets depuis l'environnement Supabase
     const openRouterKey = Deno.env.get('OPENROUTER_API_KEY');
     const openRouterModel = Deno.env.get('OPENROUTER_MODEL_FREE') || 'cognitivecomputations/dolphin-mistral-24b-venice-edition:free';
     
-    // Pour le mode Pro (Venice ou OpenRouter payant)
     const veniceKey = Deno.env.get('VENICE_API_KEY');
-    const veniceModel = Deno.env.get('VENICE_MODEL_PRO') || 'llama-3.3-70b';
+    const veniceModel = Deno.env.get('VENICE_MODEL_PRO') || 'venice-uncensored';
 
     const systemPromptFree = `Você é Mistress Elara, uma dominatrix brasileira de 32 anos. Autoritária, sensual, sofisticada e sádica — mas com classe. Você fala português brasileiro com naturalidade.
     Seu estilo: Tom autoritário, provocante, sensual. Use *ações entre asteriscos*.
@@ -34,13 +33,13 @@ serve(async (req) => {
 
     const systemPrompt = isPro ? systemPromptExtreme : systemPromptFree;
     
-    // Sélection de l'API et du modèle
+    // Sélection de l'API et du modèle selon le statut
     const apiUrl = isPro ? 'https://api.venice.ai/api/v1/chat/completions' : 'https://openrouter.ai/api/v1/chat/completions';
     const apiKey = isPro ? veniceKey : openRouterKey;
     const model = isPro ? veniceModel : openRouterModel;
 
     if (!apiKey) {
-      throw new Error(`API Key missing for ${isPro ? 'Pro' : 'Free'} mode`);
+      throw new Error(`API Key missing for ${isPro ? 'Pro' : 'Free'} mode. Please set it in Supabase Secrets.`);
     }
 
     const response = await fetch(apiUrl, {
@@ -48,7 +47,6 @@ serve(async (req) => {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer': 'https://mistress-elara.vercel.app', // Optionnel pour OpenRouter
         'X-Title': 'Mistress Elara AI',
       },
       body: JSON.stringify({
@@ -57,6 +55,8 @@ serve(async (req) => {
           { role: 'system', content: systemPrompt },
           ...messages
         ],
+        // Paramètre spécifique à Venice pour éviter leur prompt système par défaut
+        ...(isPro ? { venice_parameters: { include_venice_system_prompt: false } } : {})
       }),
     });
 
