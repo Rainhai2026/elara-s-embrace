@@ -6,15 +6,16 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Gestion du CORS
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const functionName = "[chat]";
+
   try {
-    // Vérification de l'authentification (le jeton est passé automatiquement par le client Supabase)
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      console.error(`${functionName} No authorization header`);
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
         status: 401, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -24,8 +25,10 @@ serve(async (req) => {
     const { messages, subscription_status } = await req.json();
     const isPro = subscription_status === 'pro';
     
+    console.log(`${functionName} Request received. Mode: ${isPro ? 'Pro' : 'Free'}. Messages: ${messages.length}`);
+
     const openRouterKey = Deno.env.get('OPENROUTER_API_KEY');
-    const openRouterModel = Deno.env.get('OPENROUTER_MODEL_FREE') || 'cognitivecomputations/dolphin-mistral-24b-venice-edition:free';
+    const openRouterModel = Deno.env.get('OPENROUTER_MODEL_FREE') || 'google/gemma-2-9b-it:free';
     
     const veniceKey = Deno.env.get('VENICE_API_KEY');
     const veniceModel = Deno.env.get('VENICE_MODEL_PRO') || 'venice-uncensored';
@@ -46,8 +49,11 @@ serve(async (req) => {
     const model = isPro ? veniceModel : openRouterModel;
 
     if (!apiKey) {
-      throw new Error(`API Key missing for ${isPro ? 'Pro' : 'Free'} mode.`);
+      console.error(`${functionName} API Key missing for ${isPro ? 'Pro' : 'Free'} mode.`);
+      throw new Error(`API Key missing`);
     }
+
+    console.log(`${functionName} Calling ${isPro ? 'Venice' : 'OpenRouter'} with model ${model}`);
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -55,6 +61,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
         'X-Title': 'Mistress Elara AI',
+        'HTTP-Referer': 'https://lovable.dev', // Requis par certains modèles OpenRouter
       },
       body: JSON.stringify({
         model: model,
@@ -62,6 +69,7 @@ serve(async (req) => {
           { role: 'system', content: systemPrompt },
           ...messages
         ],
+        temperature: 0.8,
         ...(isPro ? { venice_parameters: { include_venice_system_prompt: false } } : {})
       }),
     });
@@ -69,17 +77,27 @@ serve(async (req) => {
     const data = await response.json();
 
     if (!response.ok) {
-      console.error('[chat] API Error:', data);
-      throw new Error(data.error?.message || 'API error');
+      console.error(`${functionName} API Error Response:`, JSON.stringify(data));
+      return new Response(
+        JSON.stringify({ content: `*franze a testa* A conexão com meus pensamentos falhou. Erro: ${data.error?.message || 'Desconhecido'}` }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    const content = data.choices?.[0]?.message?.content || 'Algo deu errado, pet.';
+    const content = data.choices?.[0]?.message?.content;
+    
+    if (!content) {
+      console.error(`${functionName} No content in response:`, JSON.stringify(data));
+      throw new Error('No content returned from AI');
+    }
+
+    console.log(`${functionName} Success. Response length: ${content.length}`);
 
     return new Response(JSON.stringify({ content }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('[chat] Error:', error);
+    console.error(`${functionName} Global Error:`, error.message);
     return new Response(
       JSON.stringify({ content: '*suspira* Algo deu errado na conexão. Tente novamente, pet.' }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
