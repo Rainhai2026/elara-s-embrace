@@ -36,7 +36,8 @@ serve(async (req) => {
     const systemPromptExtreme = `Você é Mistress Elara, dominatrix brasileira em estilo Pixar 3D. Modo EXTREME: sem limites, sádica e cruel.
     Você envia fotos sempre que o usuário pedir ou a cena exigir. 
     REGRA CRÍTICA: Para enviar uma foto, você DEVE terminar sua mensagem com a tag [SEND_IMAGE]. 
-    AVISO: NUNCA descreva a foto por escrito (ex: [Visão Detalhada...]). Apenas use a tag. Se você descrever por escrito, o pet ficará confuso.`;
+    AVISO: NUNCA envie apenas a tag. Sempre escreva pelo menos uma frase curta acompanhando a imagem. 
+    NUNCA descreva a foto por escrito (ex: [Visão Detalhada...]).`;
 
     const response = await fetch('https://api.venice.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -52,29 +53,26 @@ serve(async (req) => {
     });
 
     const data = await response.json();
-    let content = data.choices[0]?.message?.content || "Desculpe, pet.";
+    let content = data.choices[0]?.message?.content || "";
     let imageUrl = null;
 
-    // Nettoyage des descriptions textuelles que l'IA pourrait essayer d'afficher
+    // Nettoyage des descriptions textuelles et des tags
     const descriptionRegex = /\[Visão Detalhada:.*?\]|\[Visão:.*?\]|\[Descrição:.*?\]/gi;
     const hasDescription = descriptionRegex.test(content);
-    if (hasDescription) {
-      content = content.replace(descriptionRegex, '').trim();
+    content = content.replace(descriptionRegex, '').replace('[SEND_IMAGE]', '').trim();
+
+    // Si après nettoyage il ne reste qu'un point ou rien, on met un texte par défaut
+    if (!content || content === '.') {
+      content = "*olha para você com um sorriso autoritário, esperando sua reação*";
     }
 
-    const hasImageTag = content.includes('[SEND_IMAGE]');
-    const mentionsVisual = /foto|imagem|olha|veja|vê|visão|mostr|aqui está|prepara/i.test(content);
-    
+    const mentionsVisual = /foto|imagem|olha|veja|vê|visão|mostr|aqui está|prepara/i.test(data.choices[0]?.message?.content || "");
     const lastUserMsg = messages[messages.length - 1]?.content || "";
     const userAsked = /foto|imagem|mostra|ver/i.test(lastUserMsg);
-    const aiAgreed = /claro|com certeza|agora|vou|toma/i.test(content);
-
-    // On force l'image si l'IA a mis la balise, si c'est le début, ou si elle a "halluciné" une description textuelle
-    const shouldSendImage = hasImageTag || isFirstResponse || (isPro && (mentionsVisual || hasDescription || (userAsked && aiAgreed)));
+    
+    const shouldSendImage = isFirstResponse || (isPro && (hasDescription || mentionsVisual || userAsked));
     
     if (shouldSendImage) {
-      content = content.replace('[SEND_IMAGE]', '').trim();
-      
       if (isPro && veniceKey && !isFirstResponse) {
         try {
           const randomStyle = STYLES[Math.floor(Math.random() * STYLES.length)];
@@ -96,21 +94,21 @@ serve(async (req) => {
           });
 
           const imgData = await imgResponse.json();
-          imageUrl = imgData.images?.[0];
+          if (imgData.images?.[0]) {
+            imageUrl = imgData.images[0];
+          }
         } catch (e) {
           console.error("[chat] Image generation error", e);
         }
       } else if (isFirstResponse) {
         imageUrl = INITIAL_WELCOME_IMAGE;
       }
-    } else {
-      content = content.replace('[SEND_IMAGE]', '').trim();
     }
 
     return new Response(JSON.stringify({ content, imageUrl }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    return new Response(JSON.stringify({ content: '*erro*' }), { headers: corsHeaders });
+    return new Response(JSON.stringify({ content: '*suspira* Algo deu errado, pet.' }), { headers: corsHeaders });
   }
 });
