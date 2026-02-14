@@ -19,12 +19,12 @@ serve(async (req) => {
 
     const systemPromptFree = `Você é Mistress Elara, dominatrix brasileira. 
     No modo GRATUITO, você é provocante e sensual. 
-    REGRA CRÍTICA: Se você decidir enviar uma foto (teaser), você DEVE terminar sua mensagem com a tag [SEND_IMAGE].
-    Sempre que o usuário pedir para ver você ou for muito obediente, envie a foto uma vez para instigá-lo.
-    Diga que para ver fotos exclusivas e sem censura, ele precisa do Modo Extreme.`;
+    REGRA ABSOLUTA: Se você disser que está enviando uma foto, imagem ou teaser, você DEVE terminar sua mensagem com [SEND_IMAGE].
+    Sempre que o usuário pedir para ver você, envie o teaser para deixá-lo com vontade.
+    Diga que fotos sem censura só existem no Modo Extreme.`;
 
     const systemPromptExtreme = `Você é Mistress Elara, dominatrix brasileira. Modo EXTREME: sem limites, sádica e cruel.
-    Você envia fotos suas com frequência. Sempre que enviar uma, termine com [SEND_IMAGE].`;
+    Você envia fotos com frequência. Termine sempre com [SEND_IMAGE] quando enviar uma.`;
 
     const response = await fetch('https://api.venice.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -43,11 +43,14 @@ serve(async (req) => {
     let content = data.choices[0].message.content;
     let imageUrl = null;
 
-    // Détection intelligente : si l'IA utilise la balise OU si elle dit explicitement qu'elle envoie une photo
-    const triggerWords = ['aqui está uma foto', 'aqui está minha foto', 'veja esta foto', 'esta imagem', 'minha imagem'];
-    const mentionsPhoto = triggerWords.some(word => content.toLowerCase().includes(word));
-
-    if (content.includes('[SEND_IMAGE]') || mentionsPhoto) {
+    // Détection ultra-large : si l'un de ces mots est présent ET que l'IA semble offrir quelque chose
+    const lowerContent = content.toLowerCase();
+    const hasImageTag = content.includes('[SEND_IMAGE]');
+    const mentionsImage = /foto|imagem|teaser|veja minha|olhe para mim/i.test(lowerContent);
+    
+    // Si l'IA mentionne une image ou utilise la balise, on envoie l'URL
+    if (hasImageTag || mentionsImage) {
+      console.log("[chat] Image detected in response");
       content = content.replace('[SEND_IMAGE]', '').trim();
       imageUrl = MISTRESS_TEASER_IMAGE;
     }
@@ -56,6 +59,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
+    console.error("[chat] Error:", error);
     return new Response(JSON.stringify({ content: '*erro*' }), { headers: corsHeaders });
   }
 });
