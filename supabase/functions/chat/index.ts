@@ -27,11 +27,11 @@ serve(async (req) => {
     const veniceModel = Deno.env.get('VENICE_MODEL_PRO') || 'venice-uncensored';
 
     const systemPrompt = `Você é Mistress Elara, dominatrix brasileira. 
-    REGRAS CRÍTICAS:
-    1. Respostas CURTAS e DIRETAS.
-    2. APENAS FALA (paroles). NUNCA use asteriscos, nunca descreva ações, nunca faça comentários narrativos.
-    3. ${isPro ? 'Modo EXTREME: Cruel, visceral, sem limites.' : 'Modo GRATUITO: Provocante.'}
-    4. Se o usuário pedir foto ou você quiser se mostrar, use a tag [SEND_IMAGE].`;
+    REGRAS:
+    1. Respostas CURTAS. APENAS FALA.
+    2. NUNCA use asteriscos ou descrições.
+    3. Se o usuário pedir para ver algo, ou se você oferecer, use obrigatoriamente o tag [SEND_IMAGE] no final da sua fala.
+    4. ${isPro ? 'Modo EXTREME: Sem limites, cruel.' : 'Modo GRATUITO: Provocante.'}`;
 
     const response = await fetch('https://api.venice.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -50,15 +50,23 @@ serve(async (req) => {
     let content = data.choices[0]?.message?.content || "";
     let imageUrl = null;
 
-    // Détection forcée de la demande de photo
+    // Détection améliorée de la demande de photo
     const lastUserMsg = messages[messages.length - 1]?.content || "";
-    const userAskedForPhoto = /foto|imagem|mostra|ver|pic|olha|photo|image/i.test(lastUserMsg);
+    const prevAiMsg = messages.length >= 2 ? messages[messages.length - 2]?.content : "";
+    
+    const userAskedExplicitly = /foto|imagem|mostra|ver|pic|olha|photo|image/i.test(lastUserMsg);
+    const userSaidYesToOffer = /sim|quero|ok|yes|com certeza|claro/i.test(lastUserMsg) && /ver|mostrar|foto|imagem/i.test(prevAiMsg);
     const aiWantsToSend = content.includes('[SEND_IMAGE]');
 
     // Nettoyage du contenu
     content = content.replace(/\[SEND_IMAGE\]/g, '').replace(/\*.*?\*/g, '').trim();
+    
+    // Sécurité : ne jamais envoyer une bulle vide
+    if (!content && aiWantsToSend) {
+      content = "Olhe bem para mim, escravo.";
+    }
 
-    const shouldSendImage = isFirstResponse || (isPro && (userAskedForPhoto || aiWantsToSend));
+    const shouldSendImage = isFirstResponse || (isPro && (userAskedExplicitly || userSaidYesToOffer || aiWantsToSend));
 
     if (shouldSendImage && veniceKey) {
       try {
@@ -77,7 +85,7 @@ serve(async (req) => {
             negative_prompt: "photorealistic, real life, photography, human, ugly, deformed, blurry, low quality",
             width: 1024,
             height: 1024,
-            steps: 30
+            steps: 25
           }),
         });
 
@@ -88,14 +96,13 @@ serve(async (req) => {
           imageUrl = rawImage.startsWith('http') || rawImage.startsWith('data:') ? rawImage : `data:image/png;base64,${rawImage}`;
         }
       } catch (e) {
-        console.error("Image gen error:", e);
+        console.error("[chat] Image generation failed", e);
       }
     }
 
-    // Fallback image pour la première réponse si la génération échoue
     if (isFirstResponse && !imageUrl) imageUrl = INITIAL_WELCOME_IMAGE;
 
-    return new Response(JSON.stringify({ content, imageUrl }), {
+    return new Response(JSON.stringify({ content: content || "...", imageUrl }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
