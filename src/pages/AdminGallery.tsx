@@ -3,7 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Trash2, Plus, ArrowLeft, Image as ImageIcon } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Trash2, Plus, ArrowLeft, Image as ImageIcon, AlertCircle, ListPlus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -11,6 +12,8 @@ export default function AdminGallery() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [newUrl, setNewUrl] = useState('');
+  const [bulkUrls, setBulkUrls] = useState('');
+  const [showBulk, setShowBulk] = useState(false);
 
   const { data: images, isLoading } = useQuery({
     queryKey: ['gallery-images'],
@@ -25,15 +28,21 @@ export default function AdminGallery() {
   });
 
   const addMutation = useMutation({
-    mutationFn: async (url: string) => {
-      const { error } = await supabase.from('gallery_images').insert([{ url }]);
+    mutationFn: async (urls: string[]) => {
+      const inserts = urls.map(url => ({ url: url.trim() }));
+      const { error } = await supabase.from('gallery_images').insert(inserts);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['gallery-images'] });
       setNewUrl('');
-      toast.success('Photo ajoutée à la galerie');
+      setBulkUrls('');
+      setShowBulk(false);
+      toast.success('Fotos adicionadas com sucesso');
     },
+    onError: () => {
+      toast.error('Erro ao adicionar fotos. Verifique os links.');
+    }
   });
 
   const deleteMutation = useMutation({
@@ -43,43 +52,92 @@ export default function AdminGallery() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['gallery-images'] });
-      toast.success('Photo supprimée');
+      toast.success('Foto removida');
     },
   });
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAddSingle = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUrl.trim()) return;
-    addMutation.mutate(newUrl.trim());
+    if (!newUrl.match(/\.(jpg|jpeg|png|webp|gif)/i)) {
+      toast.error("O link deve ser DIRETO (terminar em .jpg, .png, etc)");
+      return;
+    }
+    addMutation.mutate([newUrl.trim()]);
+  };
+
+  const handleAddBulk = () => {
+    const urls = bulkUrls.split('\n').filter(url => url.trim().length > 0);
+    if (urls.length === 0) return;
+    
+    const invalid = urls.filter(url => !url.match(/\.(jpg|jpeg|png|webp|gif)/i));
+    if (invalid.length > 0) {
+      toast.error(`${invalid.length} links parecem não ser diretos. Use links que terminam em .jpg ou .png`);
+      return;
+    }
+    
+    addMutation.mutate(urls);
   };
 
   return (
     <div className="min-h-screen bg-background p-6 max-w-4xl mx-auto">
       <header className="flex items-center justify-between mb-8">
         <Button variant="ghost" onClick={() => navigate('/')} className="gap-2">
-          <ArrowLeft className="h-4 w-4" /> Retour
+          <ArrowLeft className="h-4 w-4" /> Voltar
         </Button>
         <h1 className="text-2xl font-bold flex items-center gap-2">
-          <ImageIcon className="text-primary" /> Galerie Admin
+          <ImageIcon className="text-primary" /> Galeria Admin
         </h1>
       </header>
 
-      <form onSubmit={handleAdd} className="flex gap-2 mb-8 bg-card p-4 rounded-xl border border-border">
-        <Input
-          placeholder="Collez l'URL d'une image ici..."
-          value={newUrl}
-          onChange={(e) => setNewUrl(e.target.value)}
-          className="flex-1"
-        />
-        <Button type="submit" disabled={addMutation.isPending}>
-          <Plus className="h-4 w-4 mr-2" /> Ajouter
-        </Button>
-      </form>
+      <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 mb-6 flex gap-3 items-start">
+        <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+        <div className="text-sm text-amber-200/80">
+          <p className="font-bold text-amber-500 mb-1">Atenção aos Links!</p>
+          Use apenas <strong>Links Diretos</strong> (ex: https://i.ibb.co/abc/foto.jpg). 
+          Links de páginas (ex: https://ibb.co/abc) <strong>não funcionam</strong> no chat.
+        </div>
+      </div>
+
+      <div className="space-y-4 mb-8">
+        <div className="flex justify-between items-center">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Adicionar Fotos</h2>
+          <Button variant="outline" size="sm" onClick={() => setShowBulk(!showBulk)}>
+            {showBulk ? 'Usar link único' : 'Adicionar em massa'}
+          </Button>
+        </div>
+
+        {!showBulk ? (
+          <form onSubmit={handleAddSingle} className="flex gap-2 bg-card p-4 rounded-xl border border-border">
+            <Input
+              placeholder="Cole o link DIRETO da imagem (.jpg, .png)..."
+              value={newUrl}
+              onChange={(e) => setNewUrl(e.target.value)}
+              className="flex-1"
+            />
+            <Button type="submit" disabled={addMutation.isPending}>
+              <Plus className="h-4 w-4 mr-2" /> Adicionar
+            </Button>
+          </form>
+        ) : (
+          <div className="bg-card p-4 rounded-xl border border-border space-y-3">
+            <Textarea
+              placeholder="Cole vários links diretos (um por linha)..."
+              value={bulkUrls}
+              onChange={(e) => setBulkUrls(e.target.value)}
+              className="min-h-[150px] font-mono text-xs"
+            />
+            <Button onClick={handleAddBulk} className="w-full" disabled={addMutation.isPending}>
+              <ListPlus className="h-4 w-4 mr-2" /> Adicionar {bulkUrls.split('\n').filter(u => u.trim()).length} fotos
+            </Button>
+          </div>
+        )}
+      </div>
 
       {isLoading ? (
-        <div className="text-center py-12 text-muted-foreground">Chargement...</div>
+        <div className="text-center py-12 text-muted-foreground">Carregando galeria...</div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {images?.map((img) => (
             <div key={img.id} className="group relative aspect-square rounded-xl overflow-hidden border border-border bg-muted">
               <img src={img.url} alt="Gallery" className="w-full h-full object-cover" />
@@ -97,7 +155,7 @@ export default function AdminGallery() {
           ))}
           {images?.length === 0 && (
             <div className="col-span-full text-center py-12 border-2 border-dashed border-border rounded-xl text-muted-foreground">
-              Aucune image dans la galerie.
+              Nenhuma imagem na galeria.
             </div>
           )}
         </div>
