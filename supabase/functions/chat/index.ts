@@ -6,16 +6,24 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  // Gestion du CORS
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { messages, subscription_status } = await req.json();
+    // Vérification de l'authentification (le jeton est passé automatiquement par le client Supabase)
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
+        status: 401, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
+    }
 
+    const { messages, subscription_status } = await req.json();
     const isPro = subscription_status === 'pro';
     
-    // Récupération des secrets depuis l'environnement Supabase
     const openRouterKey = Deno.env.get('OPENROUTER_API_KEY');
     const openRouterModel = Deno.env.get('OPENROUTER_MODEL_FREE') || 'cognitivecomputations/dolphin-mistral-24b-venice-edition:free';
     
@@ -33,13 +41,12 @@ serve(async (req) => {
 
     const systemPrompt = isPro ? systemPromptExtreme : systemPromptFree;
     
-    // Sélection de l'API et du modèle selon le statut
     const apiUrl = isPro ? 'https://api.venice.ai/api/v1/chat/completions' : 'https://openrouter.ai/api/v1/chat/completions';
     const apiKey = isPro ? veniceKey : openRouterKey;
     const model = isPro ? veniceModel : openRouterModel;
 
     if (!apiKey) {
-      throw new Error(`API Key missing for ${isPro ? 'Pro' : 'Free'} mode. Please set it in Supabase Secrets.`);
+      throw new Error(`API Key missing for ${isPro ? 'Pro' : 'Free'} mode.`);
     }
 
     const response = await fetch(apiUrl, {
@@ -55,7 +62,6 @@ serve(async (req) => {
           { role: 'system', content: systemPrompt },
           ...messages
         ],
-        // Paramètre spécifique à Venice pour éviter leur prompt système par défaut
         ...(isPro ? { venice_parameters: { include_venice_system_prompt: false } } : {})
       }),
     });
@@ -63,7 +69,7 @@ serve(async (req) => {
     const data = await response.json();
 
     if (!response.ok) {
-      console.error('API Error:', data);
+      console.error('[chat] API Error:', data);
       throw new Error(data.error?.message || 'API error');
     }
 
@@ -73,7 +79,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Chat function error:', error);
+    console.error('[chat] Error:', error);
     return new Response(
       JSON.stringify({ content: '*suspira* Algo deu errado na conexão. Tente novamente, pet.' }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },

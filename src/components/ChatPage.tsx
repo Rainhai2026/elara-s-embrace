@@ -8,24 +8,24 @@ import { ChatInput } from '@/components/ChatInput';
 import { TypingIndicator } from '@/components/TypingIndicator';
 import { PaywallBanner } from '@/components/PaywallBanner';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Crown, Sparkles } from 'lucide-react';
+import { Crown, Sparkles, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+
 const MISTRESS_AVATAR = 'https://i.ibb.co/cKLtsYJ6/hotmartdomina.jpg';
 
 export function ChatPage() {
   const navigate = useNavigate();
   const { user, signInAnonymously } = useAuth();
   const { profile, incrementMessageCount, canSendMessage, remainingMessages } = useProfile(user?.id);
-  const { messages, isLoading, sendMessage } = useChat();
+  const { messages, isLoading, sendMessage, clearMessages } = useChat();
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Auto sign in anonymously
   useEffect(() => {
     if (!user) {
       signInAnonymously().catch(console.error);
     }
   }, [user, signInAnonymously]);
 
-  // Auto scroll
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
@@ -40,7 +40,6 @@ export function ChatPage() {
 
   return (
     <div className="flex flex-col h-screen max-w-2xl mx-auto">
-      {/* Header */}
       <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-card/80 backdrop-blur">
         <div className="flex items-center gap-3">
           <img src={MISTRESS_AVATAR} alt="Mistress Elara" className="w-10 h-10 rounded-full object-cover border border-primary/40" />
@@ -57,21 +56,26 @@ export function ChatPage() {
             </p>
           </div>
         </div>
-        {!isPro && (
-          <button
-            onClick={() => navigate('/modo-extreme')}
-            className="flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-full px-3 py-1.5 transition-colors"
-          >
-            <Sparkles className="h-3.5 w-3.5 text-primary" />
-            <span className="text-xs font-semibold text-primary">Extreme</span>
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {messages.length > 0 && (
+            <Button variant="ghost" size="icon" onClick={clearMessages} className="h-8 w-8 text-muted-foreground hover:text-destructive">
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+          {!isPro && (
+            <button
+              onClick={() => navigate('/modo-extreme')}
+              className="flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-full px-3 py-1.5 transition-colors"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
+              <span className="text-xs font-semibold text-primary">Extreme</span>
+            </button>
+          )}
+        </div>
       </header>
 
-      {/* Messages */}
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-4">
-          {/* Welcome message */}
           {messages.length === 0 && (
             <div className="relative text-center py-12 space-y-3 overflow-hidden rounded-2xl">
               <div
@@ -98,10 +102,8 @@ export function ChatPage() {
         </div>
       </ScrollArea>
 
-      {/* Paywall banner for free users */}
       {!isPro && <PaywallBanner />}
 
-      {/* Input */}
       <ChatInput
         onSend={handleSend}
         disabled={isLoading || (!canSendMessage() && !isPro)}
