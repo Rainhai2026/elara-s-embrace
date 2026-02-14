@@ -8,7 +8,7 @@ import { ChatInput } from '@/components/ChatInput';
 import { TypingIndicator } from '@/components/TypingIndicator';
 import { PaywallBanner } from '@/components/PaywallBanner';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Crown, Sparkles, Trash2 } from 'lucide-react';
+import { Crown, Sparkles, Trash2, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const MISTRESS_AVATAR = 'https://i.ibb.co/cKLtsYJ6/hotmartdomina.jpg';
@@ -16,7 +16,7 @@ const MISTRESS_AVATAR = 'https://i.ibb.co/cKLtsYJ6/hotmartdomina.jpg';
 export function ChatPage() {
   const navigate = useNavigate();
   const { user, signInAnonymously } = useAuth();
-  const { profile, incrementMessageCount, canSendMessage, remainingMessages } = useProfile(user?.id);
+  const { profile, incrementMessageCount, resetCounts, canSendMessage, remainingMessages } = useProfile(user?.id);
   const { messages, isLoading, sendMessage, clearMessages } = useChat();
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -57,6 +57,15 @@ export function ChatPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={resetCounts} 
+            className="h-8 w-8 text-muted-foreground hover:text-primary"
+            title="Reset limits (Dev)"
+          >
+            <RefreshCcw className="h-4 w-4" />
+          </Button>
           {messages.length > 0 && (
             <Button variant="ghost" size="icon" onClick={clearMessages} className="h-8 w-8 text-muted-foreground hover:text-destructive">
               <Trash2 className="h-4 w-4" />
@@ -75,7 +84,6 @@ export function ChatPage() {
       </header>
 
       <ScrollArea className="flex-1 relative">
-        {/* Fond d'écran plus subtil */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent pointer-events-none" />
         
         <div className="p-4 space-y-4 relative z-10">

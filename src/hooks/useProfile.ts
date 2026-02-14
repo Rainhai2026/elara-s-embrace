@@ -8,7 +8,7 @@ interface Profile {
   last_message_date: string;
 }
 
-const MAX_FREE_MESSAGES = 15;
+const MAX_FREE_MESSAGES = 50; // Augmenté pour le test
 const MAX_PRO_IMAGES = 5;
 const LOCAL_STORAGE_KEY = 'elara_guest_profile';
 
@@ -65,14 +65,17 @@ export function useProfile(userId: string | undefined) {
     }
   };
 
-  const incrementImageCount = async () => {
-    if (!profile) return;
-    const newCount = (profile.daily_image_count || 0) + 1;
-    const updatedProfile = { ...profile, daily_image_count: newCount, last_message_date: today };
-    setProfile(updatedProfile);
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedProfile));
+  const resetCounts = async () => {
+    const resetProfile = { 
+      subscription_status: 'free', 
+      daily_message_count: 0, 
+      daily_image_count: 0, 
+      last_message_date: today 
+    };
+    setProfile(resetProfile);
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(resetProfile));
     if (userId) {
-      await supabase.from('profiles').update({ daily_image_count: newCount, last_message_date: today }).eq('user_id', userId);
+      await supabase.from('profiles').update({ daily_message_count: 0, daily_image_count: 0 }).eq('user_id', userId);
     }
   };
 
@@ -81,19 +84,12 @@ export function useProfile(userId: string | undefined) {
     return Math.max(0, MAX_FREE_MESSAGES - (profile?.daily_message_count ?? 0));
   };
 
-  const remainingImages = () => {
-    if (profile?.subscription_status !== 'pro' && profile?.subscription_status !== 'extreme') return 0;
-    return Math.max(0, MAX_PRO_IMAGES - (profile?.daily_image_count ?? 0));
-  };
-
   return { 
     profile, 
     loading, 
     incrementMessageCount, 
-    incrementImageCount,
+    resetCounts,
     remainingMessages, 
-    remainingImages,
     canSendMessage: () => (profile?.subscription_status === 'pro' || profile?.subscription_status === 'extreme') || remainingMessages() > 0,
-    canGenerateImage: () => (profile?.subscription_status === 'pro' || profile?.subscription_status === 'extreme') && remainingImages() > 0
   };
 }
