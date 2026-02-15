@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface Profile {
   subscription_status: string;
@@ -8,8 +9,9 @@ interface Profile {
   last_message_date: string;
 }
 
-const MAX_FREE_MESSAGES = 27; // Novo limite solicitado
+const MAX_FREE_MESSAGES = 27;
 const LOCAL_STORAGE_KEY = 'elara_guest_profile';
+const SECRET_ACTIVATION_CODE = 'EXTREME2024'; // Você pode mudar este código depois
 
 export function useProfile(userId: string | undefined) {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -64,6 +66,24 @@ export function useProfile(userId: string | undefined) {
     }
   };
 
+  const activateExtreme = async (code: string) => {
+    if (!profile) return false;
+    
+    if (code.trim().toUpperCase() === SECRET_ACTIVATION_CODE) {
+      const updatedProfile = { ...profile, subscription_status: 'extreme' };
+      setProfile(updatedProfile);
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedProfile));
+      if (userId) {
+        await supabase.from('profiles').update({ subscription_status: 'extreme' }).eq('user_id', userId);
+      }
+      toast.success("MODO EXTREME ATIVADO! Aproveite, pet.");
+      return true;
+    } else {
+      toast.error("Código inválido. Não tente me enganar.");
+      return false;
+    }
+  };
+
   const toggleExtreme = async () => {
     if (!profile) return;
     const newStatus = profile.subscription_status === 'extreme' ? 'free' : 'extreme';
@@ -100,6 +120,7 @@ export function useProfile(userId: string | undefined) {
     incrementMessageCount, 
     resetCounts,
     toggleExtreme,
+    activateExtreme,
     remainingMessages, 
     canSendMessage: () => (profile?.subscription_status === 'pro' || profile?.subscription_status === 'extreme') || remainingMessages() > 0,
   };
