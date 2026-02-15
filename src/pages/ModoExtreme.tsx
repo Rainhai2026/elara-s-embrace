@@ -137,11 +137,12 @@ export default function ModoExtreme() {
             Assinar por R$29,90/mês
           </Button>
 
-          <div className="flex flex-col items-center gap-4">
+          <div className="flex flex-col items-center gap-4 pt-4 border-t border-border/40">
+            <p className="text-sm text-muted-foreground">Já comprou na Hotmart?</p>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="link" className="text-muted-foreground hover:text-primary text-sm">
-                  <Key className="h-4 w-4 mr-2" /> Já sou assinante? Resgatar acesso
+                <Button variant="outline" className="w-full border-primary/40 text-primary hover:bg-primary/10 rounded-xl py-6">
+                  <Key className="h-4 w-4 mr-2" /> ATIVAR MEU ACESSO AGORA
                 </Button>
               </DialogTrigger>
               <DialogContent className="bg-card border-border">
@@ -159,7 +160,7 @@ export default function ModoExtreme() {
                     className="bg-muted border-border"
                   />
                   <Button onClick={handleActivate} className="w-full bg-primary hover:bg-primary/80">
-                    Ativar Agora
+                    Validar Código
                   </Button>
                 </div>
               </DialogContent>
