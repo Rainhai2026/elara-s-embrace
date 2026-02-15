@@ -1,0 +1,22 @@
+name: Sync to Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Push to Production Repo
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          git remote add production https://${{ secrets.SYNC_TOKEN }}@github.com/brasilagency2026/elara-s-embrace.git
+          git push production main --force
