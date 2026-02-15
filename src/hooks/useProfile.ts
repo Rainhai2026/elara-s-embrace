@@ -7,11 +7,12 @@ interface Profile {
   daily_message_count: number;
   daily_image_count: number;
   last_message_date: string;
+  subscription_end_date?: string | null;
 }
 
 const MAX_FREE_MESSAGES = 27;
 const LOCAL_STORAGE_KEY = 'elara_guest_profile';
-const SECRET_ACTIVATION_CODE = 'EXTREME2024'; // Você pode mudar este código depois
+const SECRET_ACTIVATION_CODE = 'EXTREME2024'; 
 
 export function useProfile(userId: string | undefined) {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -29,7 +30,7 @@ export function useProfile(userId: string | undefined) {
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('subscription_status, daily_message_count, daily_image_count, last_message_date')
+          .select('subscription_status, daily_message_count, daily_image_count, last_message_date, subscription_end_date')
           .eq('user_id', userId)
           .maybeSingle();
         
@@ -38,6 +39,16 @@ export function useProfile(userId: string | undefined) {
         }
       } catch (err) {
         console.warn("[useProfile] Supabase sync failed");
+      }
+    }
+
+    // Verificar se a assinatura expirou
+    if (currentProfile.subscription_status === 'extreme' && currentProfile.subscription_end_date) {
+      const expiryDate = new Date(currentProfile.subscription_end_date);
+      if (expiryDate < new Date()) {
+        currentProfile.subscription_status = 'free';
+        currentProfile.subscription_end_date = null;
+        toast.error("Sua assinatura expirou. Renove na Hotmart para continuar no Modo Extreme.");
       }
     }
 
@@ -70,13 +81,28 @@ export function useProfile(userId: string | undefined) {
     if (!profile) return false;
     
     if (code.trim().toUpperCase() === SECRET_ACTIVATION_CODE) {
-      const updatedProfile = { ...profile, subscription_status: 'extreme' };
+      // Definir expiração para 30 dias a partir de agora
+      const expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() + 30);
+      const expiryString = expiryDate.toISOString();
+
+      const updatedProfile = { 
+        ...profile, 
+        subscription_status: 'extreme',
+        subscription_end_date: expiryString 
+      };
+
       setProfile(updatedProfile);
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedProfile));
+      
       if (userId) {
-        await supabase.from('profiles').update({ subscription_status: 'extreme' }).eq('user_id', userId);
+        await supabase.from('profiles').update({ 
+          subscription_status: 'extreme',
+          subscription_end_date: expiryString 
+        }).eq('user_id', userId);
       }
-      toast.success("MODO EXTREME ATIVADO! Aproveite, pet.");
+      
+      toast.success("MODO EXTREME ATIVADO POR 30 DIAS! Aproveite, pet.");
       return true;
     } else {
       toast.error("Código inválido. Não tente me enganar.");
@@ -100,12 +126,18 @@ export function useProfile(userId: string | undefined) {
       subscription_status: 'free', 
       daily_message_count: 0, 
       daily_image_count: 0, 
-      last_message_date: today 
+      last_message_date: today,
+      subscription_end_date: null
     };
     setProfile(resetProfile);
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(resetProfile));
     if (userId) {
-      await supabase.from('profiles').update({ daily_message_count: 0, daily_image_count: 0, subscription_status: 'free' }).eq('user_id', userId);
+      await supabase.from('profiles').update({ 
+        daily_message_count: 0, 
+        daily_image_count: 0, 
+        subscription_status: 'free',
+        subscription_end_date: null 
+      }).eq('user_id', userId);
     }
   };
 
