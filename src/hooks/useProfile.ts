@@ -12,7 +12,7 @@ interface Profile {
 
 const MAX_FREE_MESSAGES = 27;
 const LOCAL_STORAGE_KEY = 'elara_guest_profile';
-const SECRET_ACTIVATION_CODE = 'EXTREME2024'; 
+const SECRET_ACTIVATION_CODE = 'EXTREME2024'; // Mude isso mensalmente se quiser mais segurança
 
 export function useProfile(userId: string | undefined) {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -48,6 +48,13 @@ export function useProfile(userId: string | undefined) {
       if (expiryDate < new Date()) {
         currentProfile.subscription_status = 'free';
         currentProfile.subscription_end_date = null;
+        // Atualiza no banco para persistir a expiração
+        if (userId) {
+          await supabase.from('profiles').update({ 
+            subscription_status: 'free', 
+            subscription_end_date: null 
+          }).eq('user_id', userId);
+        }
         toast.error("Sua assinatura expirou. Renove na Hotmart para continuar no Modo Extreme.");
       }
     }
@@ -80,8 +87,13 @@ export function useProfile(userId: string | undefined) {
   const activateExtreme = async (code: string) => {
     if (!profile) return false;
     
+    // Se o usuário já tem uma assinatura ativa, não deixa ativar de novo com o mesmo código
+    if (profile.subscription_status === 'extreme') {
+      toast.info("Você já possui o Modo Extreme ativo, pet.");
+      return false;
+    }
+
     if (code.trim().toUpperCase() === SECRET_ACTIVATION_CODE) {
-      // Definir expiração para 30 dias a partir de agora
       const expiryDate = new Date();
       expiryDate.setDate(expiryDate.getDate() + 30);
       const expiryString = expiryDate.toISOString();
